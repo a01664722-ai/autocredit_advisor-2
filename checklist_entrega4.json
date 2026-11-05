@@ -7,7 +7,7 @@
       "titulo": "Modelos baseline y challengers",
       "responsable": "Emiliano + Yexalén",
       "evidencia": "Logit, Random Forest y XGBoost entrenados; capturas de SAS Model Studio y Python.",
-      "estado": "Pendiente",
+      "estado": "Completado",
       "nota": "Modelos desarrollados en Colab/SAS, según el equipo.",
       "enlace": "",
       "actualizado_por": "Equipo 3",
