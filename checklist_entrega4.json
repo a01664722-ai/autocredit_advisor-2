@@ -30,10 +30,10 @@
       "responsable": "Yexalén",
       "evidencia": "Matriz con ROC-AUC, KS, F1, Accuracy y matrices de confusión.",
       "estado": "Completado",
-      "nota": "Comparación realizada en Colab/SAS, según el equipo.",
+      "nota": "Comparación realizada en Colab y SAS\nAdicional: elección del modelo campeón",
       "enlace": "",
       "actualizado_por": "Equipo 3",
-      "actualizado_en": ""
+      "actualizado_en": "2026-11-05 17:46"
     },
     {
       "id": "campeon",
