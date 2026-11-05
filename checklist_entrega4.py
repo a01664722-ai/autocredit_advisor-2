@@ -13,7 +13,41 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="Entrega 4 · Equipo 3", page_icon="✅", layout="wide")
+st.set_page_config(page_title="Entrega 4 · Equipo 3", layout="wide")
+
+# Estilos de lectura: estados visibles completos y colores semánticos.
+st.markdown("""
+<style>
+    .block-container {max-width: 1380px; padding-top: 2rem;}
+    h1 {font-size: clamp(1.65rem, 3vw, 2.35rem) !important; line-height: 1.2 !important;}
+    h4 {font-size: 1.15rem !important; line-height: 1.4 !important; overflow-wrap: anywhere;}
+    .resumen-card {
+        border: 1px solid rgba(160, 160, 160, .23);
+        border-radius: 12px;
+        padding: 14px 18px;
+        min-height: 92px;
+    }
+    .resumen-label {font-size: .95rem; color: #A4A4A4; margin-bottom: 6px;}
+    .resumen-valor {font-size: 2.1rem; font-weight: 750; line-height: 1.1;}
+    .resumen-pendiente {color: #F87171;}
+    .resumen-parcial {color: #FBBF24;}
+    .resumen-completado {color: #4ADE80;}
+    .estado-etiqueta {
+        display: inline-block;
+        border-radius: 9px;
+        padding: 7px 12px;
+        font-size: .93rem;
+        line-height: 1.35;
+        font-weight: 700;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        max-width: 100%;
+    }
+    .estado-pendiente {color: #FCA5A5; border: 1px solid #B91C1C; background: rgba(185,28,28,.15);}
+    .estado-parcial {color: #FCD34D; border: 1px solid #B45309; background: rgba(180,83,9,.15);}
+    .estado-completado {color: #86EFAC; border: 1px solid #15803D; background: rgba(21,128,61,.15);}
+</style>
+""", unsafe_allow_html=True)
 
 REPO = "a01664722-ai/autocredit_advisor-2"
 BRANCH = "entrega4-seguimiento"
@@ -77,7 +111,7 @@ def guardar_tarea(indice: int, cambios: dict, autor: str) -> None:
     }, token=secreto("GITHUB_TOKEN"))
 
 
-st.title("✅ Entrega 4 · Seguimiento del Equipo 3")
+st.title("Entrega 4 · Seguimiento del Equipo 3")
 st.caption("Riesgo crediticio automotriz · 8 criterios de evidencia · Estado compartido en GitHub")
 
 token = secreto("GITHUB_TOKEN")
@@ -116,10 +150,18 @@ tareas = documento["tareas"]
 conteo = {estado: sum(t["estado"] == estado for t in tareas) for estado in ESTADOS}
 total = len(tareas)
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Criterios", total)
-c2.metric("Completados", conteo["Completado"])
-c3.metric("En proceso", conteo["Parcial"])
-c4.metric("Pendientes", conteo["Pendiente"])
+for columna, etiqueta, valor, clase in [
+    (c1, "Criterios", total, ""),
+    (c2, "Completados", conteo["Completado"], "resumen-completado"),
+    (c3, "En proceso", conteo["Parcial"], "resumen-parcial"),
+    (c4, "Pendientes", conteo["Pendiente"], "resumen-pendiente"),
+]:
+    with columna:
+        st.markdown(
+            f'<div class="resumen-card"><div class="resumen-label">{etiqueta}</div>'
+            f'<div class="resumen-valor {clase}">{valor}</div></div>',
+            unsafe_allow_html=True,
+        )
 st.progress(conteo["Completado"] / total, text=f"{conteo['Completado']} de {total} criterios completados")
 st.caption("El progreso refleja los estados declarados por el equipo; las evidencias deben revisarse antes de entregar.")
 
@@ -131,20 +173,59 @@ visible = [(i, tarea) for i, tarea in enumerate(tareas)
 
 for indice, tarea in visible:
     with st.container(border=True):
-        columna_izq, columna_der = st.columns([4, 1])
+        columna_izq, columna_der = st.columns([5, 1.8], vertical_alignment="top")
         with columna_izq:
             st.markdown(f"#### {indice + 1}. {tarea['titulo']}")
             st.markdown(f"**Responsable:** {tarea['responsable']}")
             st.write(f"**Evidencia:** {tarea['evidencia']}")
         with columna_der:
-            st.metric("Estado", tarea["estado"])
+            estado_actual = tarea["estado"] if tarea["estado"] in ESTADOS else "Pendiente"
+            clase_estado = {
+                "Pendiente": "estado-pendiente",
+                "Parcial": "estado-parcial",
+                "Completado": "estado-completado",
+            }[estado_actual]
+            st.markdown(
+                f'<div class="estado-etiqueta {clase_estado}">{estado_actual}</div>',
+                unsafe_allow_html=True,
+            )
         if tarea.get("nota"):
             st.caption(f"Nota: {tarea['nota']}")
         if tarea.get("enlace"):
             st.link_button("Abrir evidencia", tarea["enlace"])
         if tarea.get("actualizado_en"):
             st.caption(f"Última actualización: {tarea.get('actualizado_en')} · {tarea.get('actualizado_por', '')}")
-        with st.expander("Editar estado, nota y evidencia"):
+        # Cambios rápidos: un clic guarda el estado compartido y actualiza el progreso.
+        if autorizado:
+            st.caption("Cambiar estado rápidamente")
+            botones = st.columns(3, gap="small")
+            for columna, nuevo_estado in zip(botones, ESTADOS):
+                with columna:
+                    if st.button(
+                        f"Marcar {nuevo_estado.lower()}",
+                        key=f"rapido_{tarea['id']}_{nuevo_estado}",
+                        use_container_width=True,
+                        disabled=(tarea["estado"] == nuevo_estado),
+                        type="primary" if nuevo_estado == "Completado" else "secondary",
+                    ):
+                        try:
+                            guardar_tarea(indice, {
+                                "id": tarea["id"],
+                                "estado": nuevo_estado,
+                                "nota": tarea.get("nota", ""),
+                                "enlace": tarea.get("enlace", ""),
+                            }, nombre.strip())
+                        except HTTPError as error:
+                            if error.code in (409, 422):
+                                st.warning("Otro integrante guardó cambios. Actualiza y vuelve a intentar.")
+                            else:
+                                st.error(f"No se pudo guardar (HTTP {error.code}).")
+                        except (URLError, ValueError, KeyError) as error:
+                            st.error(f"No se pudo guardar: {type(error).__name__}")
+                        else:
+                            st.rerun()
+
+        with st.expander("Editar detalle, nota y enlace"):
             if not autorizado:
                 st.info("Para guardar, ingresa tu nombre y el PIN del equipo en la barra lateral.")
             else:
