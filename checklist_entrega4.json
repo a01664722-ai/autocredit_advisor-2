@@ -19,10 +19,10 @@
       "responsable": "Emiliano",
       "evidencia": "Tabla con parámetros de los tres modelos y justificación.",
       "estado": "Parcial",
-      "nota": "Parámetros disponibles en Python; falta documentación en SAS.",
+      "nota": "Matriz de confusión, metricas comparativas de cada modelo COLAB y SAS",
       "enlace": "",
       "actualizado_por": "Equipo 3",
-      "actualizado_en": ""
+      "actualizado_en": "2026-11-05 17:45"
     },
     {
       "id": "comparacion",
