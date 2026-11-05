@@ -8,10 +8,10 @@
       "responsable": "Emiliano + Yexalén",
       "evidencia": "Logit, Random Forest y XGBoost entrenados; capturas de SAS Model Studio y Python.",
       "estado": "Completado",
-      "nota": "Modelos desarrollados en Colab/SAS, según el equipo.",
+      "nota": "Modelos desarrollados en Colab y SAS",
       "enlace": "",
       "actualizado_por": "Equipo 3",
-      "actualizado_en": "2026-11-05 17:27"
+      "actualizado_en": "2026-11-05 17:45"
     },
     {
       "id": "hiperparametros",
