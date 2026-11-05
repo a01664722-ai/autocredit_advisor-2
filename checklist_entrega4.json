@@ -18,7 +18,7 @@
       "titulo": "Configuración de hiperparámetros",
       "responsable": "Emiliano",
       "evidencia": "Tabla con parámetros de los tres modelos y justificación.",
-      "estado": "Parcial",
+      "estado": "Completado",
       "nota": "Matriz de confusión, metricas comparativas de cada modelo COLAB y SAS",
       "enlace": "",
       "actualizado_por": "Equipo 3",
