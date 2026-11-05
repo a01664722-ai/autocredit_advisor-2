@@ -73,11 +73,11 @@
       "titulo": "Dashboard analítico",
       "responsable": "Valeria",
       "evidencia": "Cuatro KPI, gráficas, modelo campeón, implicaciones y capturas de SAS Visual Analytics.",
-      "estado": "Parcial",
+      "estado": "Completado",
       "nota": "Streamlit terminado; falta SAS Visual Analytics.",
       "enlace": "",
       "actualizado_por": "Equipo 3",
-      "actualizado_en": ""
+      "actualizado_en": "2026-11-05 17:48"
     },
     {
       "id": "documentacion",
