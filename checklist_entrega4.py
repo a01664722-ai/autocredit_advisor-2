@@ -47,32 +47,41 @@ st.markdown("""
     .estado-parcial {color: #FCD34D; border: 1px solid #B45309; background: rgba(180,83,9,.15);}
     .estado-completado {color: #86EFAC; border: 1px solid #15803D; background: rgba(21,128,61,.15);}
 
-    /* Solo los selectores 'Actualizar estado' de las tareas, no el filtro superior. */
-    div[class*="st-key-estado_"] [data-baseweb="button-group"] button:nth-of-type(1) {
-        color: #FCA5A5 !important;
-        background: rgba(220, 38, 38, .16) !important;
-        border-color: #B91C1C !important;
-    }
-    div[class*="st-key-estado_"] [data-baseweb="button-group"] button:nth-of-type(2) {
-        color: #FDE68A !important;
-        background: rgba(245, 158, 11, .15) !important;
-        border-color: #B45309 !important;
-    }
-    div[class*="st-key-estado_"] [data-baseweb="button-group"] button:nth-of-type(3) {
-        color: #86EFAC !important;
-        background: rgba(34, 197, 94, .15) !important;
-        border-color: #15803D !important;
-    }
-    div[class*="st-key-estado_"] [data-baseweb="button-group"] button * {
-        color: inherit !important;
-    }
-    div[class*="st-key-estado_"] [data-baseweb="button-group"] button[kind="segmented_controlActive"] {
-        box-shadow: inset 0 0 0 1px currentColor !important;
+    /* Tres botones independientes: colores fijos, incluso si no están seleccionados. */
+    div[class*="st-key-action_pendiente_"] button {
+        background-color: #8F1D25 !important;
+        border: 2px solid #F87171 !important;
+        color: #FFFFFF !important;
         font-weight: 700 !important;
-        filter: brightness(1.23);
     }
-    div[class*="st-key-estado_"] [data-baseweb="button-group"] button:hover {
-        filter: brightness(1.35);
+    div[class*="st-key-action_parcial_"] button {
+        background-color: #A66D06 !important;
+        border: 2px solid #FBBF24 !important;
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+    div[class*="st-key-action_completado_"] button {
+        background-color: #137D46 !important;
+        border: 2px solid #4ADE80 !important;
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+    div[class*="st-key-action_pendiente_"] button:hover,
+    div[class*="st-key-action_parcial_"] button:hover,
+    div[class*="st-key-action_completado_"] button:hover {
+        filter: brightness(1.2);
+    }
+    div[class*="st-key-action_pendiente_"] button:disabled,
+    div[class*="st-key-action_parcial_"] button:disabled,
+    div[class*="st-key-action_completado_"] button:disabled {
+        opacity: .85 !important;
+        cursor: default;
+    }
+    div[class*="st-key-action_pendiente_"] button p,
+    div[class*="st-key-action_parcial_"] button p,
+    div[class*="st-key-action_completado_"] button p {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -152,10 +161,8 @@ def guardar_tarea(tarea_id: str, cambios: dict) -> None:
     }, token=secreto("GITHUB_TOKEN"))
 
 
-def cambiar_estado(tarea_id: str) -> None:
-    """Se ejecuta inmediatamente al escoger una opción del selector."""
-    clave = f"estado_{tarea_id}"
-    nuevo_estado = st.session_state[clave]
+def cambiar_estado(tarea_id: str, nuevo_estado: str) -> None:
+    """Guarda el estado al pulsar uno de los tres botones de color."""
     try:
         guardar_tarea(tarea_id, {"estado": nuevo_estado})
     except HTTPError as error:
@@ -168,12 +175,6 @@ def cambiar_estado(tarea_id: str) -> None:
         else:
             mensaje = f"No se pudo guardar en GitHub (HTTP {error.code})."
         st.session_state[f"aviso_{tarea_id}"] = ("error", mensaje)
-        try:
-            actual, _ = leer_documento()
-            anterior = next(t["estado"] for t in actual["tareas"] if t["id"] == tarea_id)
-            st.session_state[clave] = anterior
-        except Exception:
-            pass
     except (URLError, ValueError, KeyError, TimeoutError) as error:
         st.session_state[f"aviso_{tarea_id}"] = (
             "error", f"No se pudo guardar ({type(error).__name__}). Intenta actualizar."
@@ -258,19 +259,20 @@ for indice, tarea in visible:
             st.link_button("Abrir evidencia", tarea["enlace"])
         if tarea.get("actualizado_en"):
             st.caption(f"Última actualización: {tarea.get('actualizado_en')} · {tarea.get('actualizado_por', '')}")
-        # Selector inmediato: al cambiar se guarda en GitHub automáticamente.
-        clave_estado = f"estado_{tarea['id']}"
-        if clave_estado not in st.session_state:
-            st.session_state[clave_estado] = tarea["estado"]
-        st.segmented_control(
-            "Actualizar estado",
-            ESTADOS,
-            key=clave_estado,
-            on_change=cambiar_estado,
-            args=(tarea["id"],),
-            disabled=not puede_editar,
-            selection_mode="single",
-        )
+        # Tres botones coloreados permanentemente; el estado se guarda al hacer clic.
+        st.caption("Actualizar estado")
+        cols_estado = st.columns(3, gap="small")
+        for columna, estado_opcion in zip(cols_estado, ESTADOS):
+            with columna:
+                with st.container(key=f"action_{estado_opcion.lower()}_{tarea['id']}"):
+                    st.button(
+                        estado_opcion,
+                        key=f"boton_{estado_opcion.lower()}_{tarea['id']}",
+                        on_click=cambiar_estado,
+                        args=(tarea["id"], estado_opcion),
+                        use_container_width=True,
+                        disabled=(not puede_editar or tarea["estado"] == estado_opcion),
+                    )
         aviso = st.session_state.pop(f"aviso_{tarea['id']}", None)
         if aviso:
             clase_aviso, mensaje = aviso
