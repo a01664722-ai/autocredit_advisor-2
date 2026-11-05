@@ -47,41 +47,93 @@ st.markdown("""
     .estado-parcial {color: #FCD34D; border: 1px solid #B45309; background: rgba(180,83,9,.15);}
     .estado-completado {color: #86EFAC; border: 1px solid #15803D; background: rgba(21,128,61,.15);}
 
-    /* Tres botones independientes: colores fijos, incluso si no están seleccionados. */
+    /* Filtros superiores: colores tenues siempre, un poco más visibles al seleccionar. */
+    div[class*="st-key-filter_"] button {
+        min-height: 2.35rem !important;
+        border-radius: 9px !important;
+        font-size: .92rem !important;
+        font-weight: 500 !important;
+        box-shadow: none !important;
+        transition: background .15s ease, border-color .15s ease !important;
+    }
+    div[class*="st-key-filter_todos_"] button {
+        color: #94D9B1 !important;
+        border: 1px solid rgba(74, 222, 128, .28) !important;
+        background: rgba(74, 222, 128, .035) !important;
+    }
+    div[class*="st-key-filter_pendiente_"] button {
+        color: #E8A5A5 !important;
+        border: 1px solid rgba(248, 113, 113, .25) !important;
+        background: rgba(248, 113, 113, .035) !important;
+    }
+    div[class*="st-key-filter_parcial_"] button {
+        color: #E7C68B !important;
+        border: 1px solid rgba(251, 191, 36, .25) !important;
+        background: rgba(251, 191, 36, .035) !important;
+    }
+    div[class*="st-key-filter_completado_"] button {
+        color: #94D9B1 !important;
+        border: 1px solid rgba(74, 222, 128, .25) !important;
+        background: rgba(74, 222, 128, .035) !important;
+    }
+    div[class*="st-key-filter_todos_selected"] button,
+    div[class*="st-key-filter_completado_selected"] button {
+        background: rgba(74, 222, 128, .12) !important;
+        border-color: rgba(74, 222, 128, .65) !important;
+        color: #86EFAC !important;
+        font-weight: 650 !important;
+    }
+    div[class*="st-key-filter_pendiente_selected"] button {
+        background: rgba(248, 113, 113, .14) !important;
+        border-color: rgba(248, 113, 113, .7) !important;
+        color: #FCA5A5 !important;
+        font-weight: 650 !important;
+    }
+    div[class*="st-key-filter_parcial_selected"] button {
+        background: rgba(251, 191, 36, .14) !important;
+        border-color: rgba(251, 191, 36, .7) !important;
+        color: #FCD34D !important;
+        font-weight: 650 !important;
+    }
+    div[class*="st-key-filter_"] button p { color: inherit !important; }
+    /* Botones de edición: más discretos y ocultos dentro de un desplegable. */
     div[class*="st-key-action_pendiente_"] button {
-        background-color: #8F1D25 !important;
-        border: 2px solid #F87171 !important;
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
+        color: #E8A5A5 !important;
+        background: rgba(248, 113, 113, .045) !important;
+        border: 1px solid rgba(248, 113, 113, .32) !important;
     }
     div[class*="st-key-action_parcial_"] button {
-        background-color: #A66D06 !important;
-        border: 2px solid #FBBF24 !important;
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
+        color: #E7C68B !important;
+        background: rgba(251, 191, 36, .045) !important;
+        border: 1px solid rgba(251, 191, 36, .32) !important;
     }
     div[class*="st-key-action_completado_"] button {
-        background-color: #137D46 !important;
-        border: 2px solid #4ADE80 !important;
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
+        color: #94D9B1 !important;
+        background: rgba(74, 222, 128, .045) !important;
+        border: 1px solid rgba(74, 222, 128, .32) !important;
     }
-    div[class*="st-key-action_pendiente_"] button:hover,
-    div[class*="st-key-action_parcial_"] button:hover,
-    div[class*="st-key-action_completado_"] button:hover {
-        filter: brightness(1.2);
+    div[class*="st-key-action_"][class*="_actual"] button {
+        background-color: rgba(140, 140, 140, .12) !important;
+        border-width: 2px !important;
+        font-weight: 650 !important;
+        opacity: 1 !important;
     }
-    div[class*="st-key-action_pendiente_"] button:disabled,
-    div[class*="st-key-action_parcial_"] button:disabled,
-    div[class*="st-key-action_completado_"] button:disabled {
-        opacity: .85 !important;
-        cursor: default;
+    div[class*="st-key-action_pendiente_"][class*="_actual"] button {
+        background: rgba(248, 113, 113, .13) !important;
+        border-color: rgba(248, 113, 113, .7) !important;
     }
-    div[class*="st-key-action_pendiente_"] button p,
-    div[class*="st-key-action_parcial_"] button p,
-    div[class*="st-key-action_completado_"] button p {
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
+    div[class*="st-key-action_parcial_"][class*="_actual"] button {
+        background: rgba(251, 191, 36, .13) !important;
+        border-color: rgba(251, 191, 36, .7) !important;
+    }
+    div[class*="st-key-action_completado_"][class*="_actual"] button {
+        background: rgba(74, 222, 128, .13) !important;
+        border-color: rgba(74, 222, 128, .7) !important;
+    }
+    div[class*="st-key-action_"] button p { color: inherit !important; }
+    div[class*="st-key-action_"] button:hover:not(:disabled),
+    div[class*="st-key-filter_"] button:hover {
+        filter: brightness(1.18);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -229,9 +281,19 @@ for columna, etiqueta, valor, clase in [
 st.progress(conteo["Completado"] / total, text=f"{conteo['Completado']} de {total} criterios completados")
 st.caption("El progreso refleja los estados declarados por el equipo; las evidencias deben revisarse antes de entregar.")
 
-filtro = st.segmented_control(
-    "Filtrar criterios", ["Todos", "Pendiente", "Parcial", "Completado"], default="Todos"
-)
+if "filtro_estados" not in st.session_state:
+    st.session_state["filtro_estados"] = "Todos"
+st.markdown("**Filtrar criterios**")
+columnas_filtro = st.columns([1.0, 1.55, 1.05, 1.65, 5], gap="small")
+opciones_filtro = ["Todos", "Pendiente", "Parcial", "Completado"]
+for columna, opcion in zip(columnas_filtro, opciones_filtro):
+    with columna:
+        seleccion = "selected" if st.session_state["filtro_estados"] == opcion else "idle"
+        with st.container(key=f"filter_{opcion.lower()}_{seleccion}"):
+            if st.button(opcion, key=f"filtro_boton_{opcion.lower()}", use_container_width=True):
+                st.session_state["filtro_estados"] = opcion
+                st.rerun()
+filtro = st.session_state["filtro_estados"]
 visible = [(i, tarea) for i, tarea in enumerate(tareas)
            if filtro == "Todos" or tarea["estado"] == filtro]
 
@@ -259,20 +321,21 @@ for indice, tarea in visible:
             st.link_button("Abrir evidencia", tarea["enlace"])
         if tarea.get("actualizado_en"):
             st.caption(f"Última actualización: {tarea.get('actualizado_en')} · {tarea.get('actualizado_por', '')}")
-        # Tres botones coloreados permanentemente; el estado se guarda al hacer clic.
-        st.caption("Actualizar estado")
-        cols_estado = st.columns(3, gap="small")
-        for columna, estado_opcion in zip(cols_estado, ESTADOS):
-            with columna:
-                with st.container(key=f"action_{estado_opcion.lower()}_{tarea['id']}"):
-                    st.button(
-                        estado_opcion,
-                        key=f"boton_{estado_opcion.lower()}_{tarea['id']}",
-                        on_click=cambiar_estado,
-                        args=(tarea["id"], estado_opcion),
-                        use_container_width=True,
-                        disabled=(not puede_editar or tarea["estado"] == estado_opcion),
-                    )
+        # Solo se muestran los controles cuando el usuario desea cambiar el estado.
+        with st.expander("Cambiar estado", expanded=False):
+            cols_estado = st.columns(3, gap="small")
+            for columna, estado_opcion in zip(cols_estado, ESTADOS):
+                with columna:
+                    seleccion = "actual" if tarea["estado"] == estado_opcion else "opcion"
+                    with st.container(key=f"action_{estado_opcion.lower()}_{tarea['id']}_{seleccion}"):
+                        st.button(
+                            estado_opcion,
+                            key=f"boton_{estado_opcion.lower()}_{tarea['id']}",
+                            on_click=cambiar_estado,
+                            args=(tarea["id"], estado_opcion),
+                            use_container_width=True,
+                            disabled=(not puede_editar or tarea["estado"] == estado_opcion),
+                        )
         aviso = st.session_state.pop(f"aviso_{tarea['id']}", None)
         if aviso:
             clase_aviso, mensaje = aviso
