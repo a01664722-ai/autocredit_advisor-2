@@ -86,21 +86,41 @@ elif usuario.rol == "gerente":
     panel1, panel2 = st.columns(2, gap="medium")
     panel3, panel4 = st.columns(2, gap="medium")
 
-    with panel1, st.container(border=True):
-        st.markdown("**1. ¿Cuántos registros históricos analizamos?**")
+        with panel1, st.container(border=True):
+        st.markdown("**1. ¿Cómo se distribuye el endeudamiento histórico (DTI)?**")
         st.metric("KPI · Registros crediticios", f"{indicadores['registros']:,}")
-        conteos_dti = tabla_dti["n"].fillna(0).astype(int)
-        fig_volumen = go.Figure(go.Bar(
-            x=conteos_dti.index.tolist(), y=conteos_dti.tolist(),
-            text=conteos_dti.tolist(), textposition="auto"
-        ))
-        fig_volumen.update_layout(
-            title="Distribución de registros por nivel de DTI",
-            xaxis_title="Endeudamiento", yaxis_title="Registros",
-            height=330, margin=dict(l=20, r=20, t=55, b=25), showlegend=False
+
+        from src import datos
+        import numpy as np
+
+        dti_real = pd.to_numeric(
+            datos.leer_base()["DEBT_TO_INCOME"], errors="coerce"
+        ).dropna() * 100
+
+        if not dti_real.empty:
+            frecuencias, limites = np.histogram(dti_real, bins=20)
+
+            fig_volumen = go.Figure(go.Bar(
+                x=(limites[:-1] + limites[1:]) / 2,
+                y=frecuencias,
+                width=np.diff(limites)
+            ))
+            fig_volumen.update_layout(
+                title="Distribución real del endeudamiento",
+                xaxis_title="DTI (%)",
+                yaxis_title="Número de registros",
+                bargap=0, height=330,
+                margin=dict(l=20, r=20, t=55, b=25)
+            )
+            st.plotly_chart(fig_volumen, use_container_width=True,
+                            key="juan_volumen")
+        else:
+            st.info("No hay valores válidos de DTI.")
+
+        st.caption(
+            "Decisión: identificar en qué rangos se concentra el "
+            "endeudamiento histórico. Fuente: CSV REAL."
         )
-        st.plotly_chart(fig_volumen, use_container_width=True, key="juan_volumen")
-        st.caption("Decisión: identificar la concentración de registros por endeudamiento. Fuente: REAL; segmentación CALCULADA.")
 
     with panel2, st.container(border=True):
         st.markdown("**2. ¿Qué proporción terminó en incumplimiento?**")
