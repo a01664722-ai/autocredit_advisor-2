@@ -1,9 +1,9 @@
 """Checklist colaborativo de Entrega 4. App independiente de AutoCredit Advisor."""
 from __future__ import annotations
 
-import csv
-import io
 import json
+import time
+import logging
 from datetime import datetime
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
@@ -76,9 +76,19 @@ def solicitud(metodo: str = "GET", contenido: dict | None = None, token: str = "
     if contenido is not None:
         datos = json.dumps(contenido, ensure_ascii=False).encode("utf-8")
         encabezados["Content-Type"] = "application/json"
-    peticion = Request(url, headers=encabezados, data=datos, method=metodo)
-    with urlopen(peticion, timeout=15) as respuesta:
-        return json.load(respuesta)
+    # Reintenta errores temporales de GitHub al guardar, sin duplicar cambios.
+    for intento in range(3):
+        peticion = Request(url, headers=encabezados, data=datos, method=metodo)
+        try:
+            with urlopen(peticion, timeout=20) as respuesta:
+                return json.load(respuesta)
+        except HTTPError as error:
+            detalle = error.read(1024).decode("utf-8", errors="replace")
+            logging.warning("GitHub HTTP %s (%s): %s", error.code, metodo, detalle)
+            if error.code in (500, 502, 503, 504) and intento < 2:
+                time.sleep(0.7 * (intento + 1))
+                continue
+            raise
 
 
 def leer_documento() -> tuple[dict, str]:
@@ -88,56 +98,81 @@ def leer_documento() -> tuple[dict, str]:
     return json.loads(texto), respuesta["sha"]
 
 
-def guardar_tarea(indice: int, cambios: dict, autor: str) -> None:
+def guardar_tarea(tarea_id: str, cambios: dict) -> None:
+    """Actualiza exclusivamente la tarea elegida y preserva las demás."""
     import base64
-    # Leer el SHA actual antes de escribir para evitar sobrescribir cambios ajenos.
+
+    # Traer la última versión en cada guardado para no pisar avances de otros.
     documento, sha = leer_documento()
-    tarea = documento["tareas"][indice]
-    if tarea["id"] != cambios["id"]:
-        raise ValueError("El orden de las tareas cambió; actualiza la página.")
-    tarea.update({
-        "estado": cambios["estado"],
-        "nota": cambios["nota"],
-        "enlace": cambios["enlace"],
-        "actualizado_por": autor,
-        "actualizado_en": datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d %H:%M"),
-    })
+    tarea = next((t for t in documento["tareas"] if t["id"] == tarea_id), None)
+    if tarea is None:
+        raise ValueError("No se encontró esta tarea. Actualiza la página.")
+    campos_permitidos = {"estado", "nota", "enlace"}
+    if not set(cambios).issubset(campos_permitidos):
+        raise ValueError("Cambios no permitidos.")
+    tarea.update(cambios)
+    tarea["actualizado_por"] = "Equipo 3"
+    tarea["actualizado_en"] = datetime.now(
+        ZoneInfo("America/Mexico_City")
+    ).strftime("%Y-%m-%d %H:%M")
     cadena = json.dumps(documento, ensure_ascii=False, indent=2) + "\n"
     solicitud("PUT", {
-        "message": f"Entrega 4: seguimiento de {tarea['id']} por {autor}",
+        "message": f"Entrega 4: actualizar {tarea_id}",
         "content": base64.b64encode(cadena.encode("utf-8")).decode("ascii"),
         "branch": BRANCH,
         "sha": sha,
     }, token=secreto("GITHUB_TOKEN"))
 
 
+def cambiar_estado(tarea_id: str) -> None:
+    """Se ejecuta inmediatamente al escoger una opción del selector."""
+    clave = f"estado_{tarea_id}"
+    nuevo_estado = st.session_state[clave]
+    try:
+        guardar_tarea(tarea_id, {"estado": nuevo_estado})
+    except HTTPError as error:
+        if error.code in (409, 422):
+            mensaje = "Otra persona actualizó la lista. Pulsa Actualizar y vuelve a intentar."
+        elif error.code in (500, 502, 503, 504):
+            mensaje = f"GitHub no pudo guardar (HTTP {error.code}). Se intentó de nuevo automáticamente."
+        elif error.code in (401, 403):
+            mensaje = f"El token no puede escribir en GitHub (HTTP {error.code}). Revisa sus permisos y vigencia."
+        else:
+            mensaje = f"No se pudo guardar en GitHub (HTTP {error.code})."
+        st.session_state[f"aviso_{tarea_id}"] = ("error", mensaje)
+        try:
+            actual, _ = leer_documento()
+            anterior = next(t["estado"] for t in actual["tareas"] if t["id"] == tarea_id)
+            st.session_state[clave] = anterior
+        except Exception:
+            pass
+    except (URLError, ValueError, KeyError, TimeoutError) as error:
+        st.session_state[f"aviso_{tarea_id}"] = (
+            "error", f"No se pudo guardar ({type(error).__name__}). Intenta actualizar."
+        )
+    else:
+        st.session_state[f"aviso_{tarea_id}"] = ("ok", "Cambio guardado para todo el equipo.")
+
+
+
 st.title("Entrega 4 · Seguimiento del Equipo 3")
 st.caption("Riesgo crediticio automotriz · 8 criterios de evidencia · Estado compartido en GitHub")
 
-token = secreto("GITHUB_TOKEN")
-pin_configurado = secreto("EQUIPO_PIN")
-puede_editar = bool(token and pin_configurado)
+# La edición rápida no pide datos al visitante. El token permanece en el servidor.
+# Atención: si la app es pública, cualquier visitante puede modificar este checklist.
+puede_editar = bool(secreto("GITHUB_TOKEN"))
 
 with st.sidebar:
     st.header("Equipo 3")
     st.write("José Carlos · Valeria · Marcos · Edwin · Yexalén · Emiliano")
     st.divider()
-    st.subheader("Edición colaborativa")
-    if puede_editar:
-        nombre = st.text_input("Tu nombre", key="nombre_integrante")
-        pin = st.text_input("PIN del equipo", type="password", key="pin_equipo")
-        autorizado = bool(nombre.strip() and pin == pin_configurado)
-        if autorizado:
-            st.success("Edición habilitada")
-        else:
-            st.info("Escribe tu nombre y el PIN para actualizar tareas.")
-    else:
-        autorizado = False
-        nombre = ""
-        st.info("Vista de consulta. Para activar edición compartida configura GITHUB_TOKEN y EQUIPO_PIN en los secretos de esta app.")
-    st.divider()
-    if st.button("Actualizar estados desde GitHub", use_container_width=True):
+    if st.button("Actualizar estados", use_container_width=True):
+        for clave in list(st.session_state):
+            if clave.startswith(("estado_", "aviso_")):
+                del st.session_state[clave]
         st.rerun()
+    if not puede_editar:
+        st.caption("Consulta únicamente: falta configurar GITHUB_TOKEN en Streamlit Secrets.")
 
 try:
     documento, _ = leer_documento()
@@ -195,65 +230,54 @@ for indice, tarea in visible:
             st.link_button("Abrir evidencia", tarea["enlace"])
         if tarea.get("actualizado_en"):
             st.caption(f"Última actualización: {tarea.get('actualizado_en')} · {tarea.get('actualizado_por', '')}")
-        # Cambios rápidos: un clic guarda el estado compartido y actualiza el progreso.
-        if autorizado:
-            st.caption("Cambiar estado rápidamente")
-            botones = st.columns(3, gap="small")
-            for columna, nuevo_estado in zip(botones, ESTADOS):
-                with columna:
-                    if st.button(
-                        f"Marcar {nuevo_estado.lower()}",
-                        key=f"rapido_{tarea['id']}_{nuevo_estado}",
-                        use_container_width=True,
-                        disabled=(tarea["estado"] == nuevo_estado),
-                        type="primary" if nuevo_estado == "Completado" else "secondary",
-                    ):
-                        try:
-                            guardar_tarea(indice, {
-                                "id": tarea["id"],
-                                "estado": nuevo_estado,
-                                "nota": tarea.get("nota", ""),
-                                "enlace": tarea.get("enlace", ""),
-                            }, nombre.strip())
-                        except HTTPError as error:
-                            if error.code in (409, 422):
-                                st.warning("Otro integrante guardó cambios. Actualiza y vuelve a intentar.")
-                            else:
-                                st.error(f"No se pudo guardar (HTTP {error.code}).")
-                        except (URLError, ValueError, KeyError) as error:
-                            st.error(f"No se pudo guardar: {type(error).__name__}")
-                        else:
-                            st.rerun()
-
-        with st.expander("Editar detalle, nota y enlace"):
-            if not autorizado:
-                st.info("Para guardar, ingresa tu nombre y el PIN del equipo en la barra lateral.")
+        # Selector inmediato: al cambiar se guarda en GitHub automáticamente.
+        clave_estado = f"estado_{tarea['id']}"
+        if clave_estado not in st.session_state:
+            st.session_state[clave_estado] = tarea["estado"]
+        st.segmented_control(
+            "Actualizar estado",
+            ESTADOS,
+            key=clave_estado,
+            on_change=cambiar_estado,
+            args=(tarea["id"],),
+            disabled=not puede_editar,
+            selection_mode="single",
+        )
+        aviso = st.session_state.pop(f"aviso_{tarea['id']}", None)
+        if aviso:
+            clase_aviso, mensaje = aviso
+            if clase_aviso == "ok":
+                st.success(mensaje)
             else:
-                with st.form(f"editar_{tarea['id']}"):
-                    estado = st.selectbox("Estado", ESTADOS, index=ESTADOS.index(tarea["estado"]))
-                    nota = st.text_area("Avances o pendientes", value=tarea.get("nota", ""), height=85)
-                    enlace = st.text_input("Enlace a evidencia (opcional)", value=tarea.get("enlace", ""))
-                    enviar = st.form_submit_button("Guardar para todo el equipo", type="primary")
-                    if enviar:
-                        enlace = enlace.strip()
-                        if enlace and not enlace.startswith(("https://", "http://")):
-                            st.error("El enlace debe empezar por https:// o http://.")
+                st.error(mensaje)
+
+        with st.expander("Agregar nota o enlace de evidencia"):
+            with st.form(f"editar_{tarea['id']}"):
+                nota = st.text_area(
+                    "Avances o pendientes", value=tarea.get("nota", ""), height=85
+                )
+                enlace = st.text_input(
+                    "Enlace a evidencia (opcional)", value=tarea.get("enlace", "")
+                )
+                enviar = st.form_submit_button(
+                    "Guardar nota y enlace", disabled=not puede_editar
+                )
+                if enviar:
+                    enlace = enlace.strip()
+                    if enlace and not enlace.startswith(("https://", "http://")):
+                        st.error("El enlace debe empezar por https:// o http://.")
+                    else:
+                        try:
+                            guardar_tarea(tarea["id"], {
+                                "nota": nota.strip(), "enlace": enlace
+                            })
+                        except HTTPError as error:
+                            st.error(f"No se pudo guardar en GitHub (HTTP {error.code}).")
+                        except (URLError, ValueError, KeyError) as error:
+                            st.error(f"No se pudo guardar: {type(error).__name__}.")
                         else:
-                            try:
-                                guardar_tarea(indice, {
-                                    "id": tarea["id"], "estado": estado,
-                                    "nota": nota.strip(), "enlace": enlace,
-                                }, nombre.strip())
-                            except HTTPError as error:
-                                if error.code in (409, 422):
-                                    st.warning("Otra persona guardó cambios. Actualiza la página y vuelve a intentarlo.")
-                                else:
-                                    st.error(f"No se pudo guardar (HTTP {error.code}). Revisa los permisos del token.")
-                            except (URLError, ValueError, KeyError) as error:
-                                st.error(f"No se pudo guardar: {type(error).__name__}")
-                            else:
-                                st.success("Actualización guardada en GitHub.")
-                                st.rerun()
+                            st.success("Detalle guardado para el equipo.")
+                            st.rerun()
 
 st.divider()
 st.subheader("Exportar seguimiento")
