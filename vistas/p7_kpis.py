@@ -82,7 +82,7 @@ elif usuario.rol == "gerente":
     # Juan: cada pregunta tiene su KPI y una visualización específica (solo agregados).
     import plotly.graph_objects as go
 
-    st.subheader("Cuatro preguntas de negocio · Cuatro visualizaciones")
+    st.subheader("Cuatro preguntas de negocio")
     panel1, panel2 = st.columns(2, gap="medium")
     panel3, panel4 = st.columns(2, gap="medium")
 
