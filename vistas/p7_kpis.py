@@ -79,25 +79,88 @@ elif usuario.rol == "gerente":
     )
     st.caption("**Decisión:** dimensionar la exposición histórica y priorizar análisis de segmentos antes de modificar la política crediticia.")
 
-    # Juan: cuatro preguntas de negocio y una gráfica comparativa de riesgo por DTI.
-    with st.expander("Preguntas de negocio · 4 KPI"):
-        st.markdown(
-            "1. **Registros crediticios:** ¿Cuántos registros históricos estamos analizando?\n"
-            "2. **Tasa histórica de incumplimiento:** ¿Qué proporción terminó en default?\n"
-            "3. **DTI promedio:** ¿Cuál es el nivel medio de endeudamiento?\n"
-            "4. **Default con DTI alto:** ¿Qué proporción incumple entre los más endeudados?"
+    # Juan: cada pregunta tiene su KPI y una visualización específica (solo agregados).
+    import plotly.graph_objects as go
+
+    st.subheader("Cuatro preguntas de negocio · Cuatro visualizaciones")
+    panel1, panel2 = st.columns(2, gap="medium")
+    panel3, panel4 = st.columns(2, gap="medium")
+
+    with panel1, st.container(border=True):
+        st.markdown("**1. ¿Cuántos registros históricos analizamos?**")
+        st.metric("KPI · Registros crediticios", f"{indicadores['registros']:,}")
+        conteos_dti = tabla_dti["n"].fillna(0).astype(int)
+        fig_volumen = go.Figure(go.Bar(
+            x=conteos_dti.index.tolist(), y=conteos_dti.tolist(),
+            text=conteos_dti.tolist(), textposition="auto"
+        ))
+        fig_volumen.update_layout(
+            title="Distribución de registros por nivel de DTI",
+            xaxis_title="Endeudamiento", yaxis_title="Registros",
+            height=330, margin=dict(l=20, r=20, t=55, b=25), showlegend=False
         )
-    st.subheader("Incumplimiento histórico por nivel de endeudamiento (DTI)")
-    grafica_dti = tabla_dti[["tasa"]].rename(columns={"tasa": "Tasa de incumplimiento (%)"}) * 100
-    if grafica_dti["Tasa de incumplimiento (%)"].notna().any():
-        st.bar_chart(grafica_dti, y="Tasa de incumplimiento (%)", use_container_width=True)
-    else:
-        st.info("No hay segmentos con suficientes registros para mostrar tasas.")
-    st.caption(
-        "Fuente: CSV REAL. Segmentos Bajo, Medio y Alto calculados mediante terciles de DTI; "
-        f"se omiten tasas con menos de {C.N_MINIMO} registros por segmento. "
-        "La asociación observada no implica causalidad ni constituye una predicción."
-    )
+        st.plotly_chart(fig_volumen, use_container_width=True, key="juan_volumen")
+        st.caption("Decisión: identificar la concentración de registros por endeudamiento. Fuente: REAL; segmentación CALCULADA.")
+
+    with panel2, st.container(border=True):
+        st.markdown("**2. ¿Qué proporción terminó en incumplimiento?**")
+        st.metric("KPI · Tasa histórica de default", f"{tasa:.2%}" if math.isfinite(tasa) else "—")
+        sin_default = indicadores["default_validos"] - indicadores["incumplimientos"]
+        fig_default = go.Figure(go.Pie(
+            labels=["Sin incumplimiento", "Incumplimiento"],
+            values=[sin_default, indicadores["incumplimientos"]],
+            hole=0.58, textinfo="label+percent"
+        ))
+        fig_default.update_layout(
+            title="Distribución histórica de DEFAULT",
+            height=330, margin=dict(l=20, r=20, t=55, b=25), showlegend=False
+        )
+        st.plotly_chart(fig_default, use_container_width=True, key="juan_default")
+        st.caption("Decisión: dimensionar el riesgo observado. Se cuentan únicamente resultados DEFAULT válidos.")
+
+    with panel3, st.container(border=True):
+        st.markdown("**3. ¿Cuál es el endeudamiento promedio (DTI)?**")
+        st.metric("KPI · DTI promedio", f"{dti:.2%}" if math.isfinite(dti) else "—")
+        if math.isfinite(dti):
+            corte_bajo, corte_alto = servicios.cortes_dti()
+            fig_dti_prom = go.Figure(go.Indicator(
+                mode="gauge+number", value=round(dti * 100, 2),
+                number={"suffix": "%"},
+                gauge={"axis": {"range": [0, max(100.0, dti * 120)]},
+                       "threshold": {"line": {"width": 3}, "value": corte_alto * 100}}
+            ))
+            fig_dti_prom.update_layout(
+                title="DTI medio (línea: inicio del tercil alto)",
+                height=330, margin=dict(l=30, r=30, t=55, b=25)
+            )
+            st.plotly_chart(fig_dti_prom, use_container_width=True, key="juan_dti_prom")
+        else:
+            st.info("No hay DTI válido para calcular el promedio.")
+        st.caption("Decisión: contextualizar el endeudamiento histórico; el tercil es descriptivo, no un límite de aprobación.")
+
+    with panel4, st.container(border=True):
+        st.markdown("**4. ¿Cuánto incumplen los perfiles con DTI alto?**")
+        st.metric("KPI · Default con DTI alto", f"{tasa_dti_alto:.2%}" if math.isfinite(tasa_dti_alto) else "—")
+        tasas_por_dti = tabla_dti["tasa"] * 100
+        if tasas_por_dti.notna().any():
+            fig_riesgo = go.Figure(go.Bar(
+                x=tasas_por_dti.index.tolist(), y=tasas_por_dti.tolist(),
+                text=[f"{v:.1f}%" if pd.notna(v) else "Sin muestra" for v in tasas_por_dti],
+                textposition="auto"
+            ))
+            fig_riesgo.update_layout(
+                title="Tasa de incumplimiento por nivel de DTI",
+                xaxis_title="Endeudamiento", yaxis_title="Incumplimiento (%)",
+                height=330, margin=dict(l=20, r=20, t=55, b=25), showlegend=False
+            )
+            st.plotly_chart(fig_riesgo, use_container_width=True, key="juan_riesgo_dti")
+        else:
+            st.info("No hay segmentos con suficientes registros para mostrar tasas.")
+        st.caption(
+            f"Decisión: priorizar revisión de segmentos. Tasas solo con n ≥ {C.N_MINIMO}; "
+            "asociación descriptiva, no causalidad ni predicción."
+        )
+
     metodologia = [
         {"KPI": "Registros crediticios", "Fórmula": "Número de filas del CSV", "Origen": "REAL"},
         {"KPI": "Tasa histórica de incumplimiento", "Fórmula": "Conteo(DEFAULT = 1) / Conteo(DEFAULT válido)", "Origen": "CALCULADO / REAL"},
