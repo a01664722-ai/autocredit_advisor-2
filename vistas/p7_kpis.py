@@ -86,7 +86,7 @@ elif usuario.rol == "gerente":
     panel1, panel2 = st.columns(2, gap="medium")
     panel3, panel4 = st.columns(2, gap="medium")
 
-        with panel1, st.container(border=True):
+    with panel1, st.container(border=True):
         st.markdown("**1. ¿Cómo se distribuye el endeudamiento histórico (DTI)?**")
         st.metric("KPI · Registros crediticios", f"{indicadores['registros']:,}")
 
