@@ -1,5 +1,6 @@
 # Datos y secretos: nunca al repositorio (Bloque F)
-data/
+data/*
+!data/Base_SAS_Equipo3.csv
 .streamlit/secrets.toml
 
 # Python
