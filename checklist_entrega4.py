@@ -46,6 +46,34 @@ st.markdown("""
     .estado-pendiente {color: #FCA5A5; border: 1px solid #B91C1C; background: rgba(185,28,28,.15);}
     .estado-parcial {color: #FCD34D; border: 1px solid #B45309; background: rgba(180,83,9,.15);}
     .estado-completado {color: #86EFAC; border: 1px solid #15803D; background: rgba(21,128,61,.15);}
+
+    /* Solo los selectores 'Actualizar estado' de las tareas, no el filtro superior. */
+    div[class*="st-key-estado_"] [data-baseweb="button-group"] button:nth-of-type(1) {
+        color: #FCA5A5 !important;
+        background: rgba(220, 38, 38, .16) !important;
+        border-color: #B91C1C !important;
+    }
+    div[class*="st-key-estado_"] [data-baseweb="button-group"] button:nth-of-type(2) {
+        color: #FDE68A !important;
+        background: rgba(245, 158, 11, .15) !important;
+        border-color: #B45309 !important;
+    }
+    div[class*="st-key-estado_"] [data-baseweb="button-group"] button:nth-of-type(3) {
+        color: #86EFAC !important;
+        background: rgba(34, 197, 94, .15) !important;
+        border-color: #15803D !important;
+    }
+    div[class*="st-key-estado_"] [data-baseweb="button-group"] button * {
+        color: inherit !important;
+    }
+    div[class*="st-key-estado_"] [data-baseweb="button-group"] button[kind="segmented_controlActive"] {
+        box-shadow: inset 0 0 0 1px currentColor !important;
+        font-weight: 700 !important;
+        filter: brightness(1.23);
+    }
+    div[class*="st-key-estado_"] [data-baseweb="button-group"] button:hover {
+        filter: brightness(1.35);
+    }
 </style>
 """, unsafe_allow_html=True)
 
