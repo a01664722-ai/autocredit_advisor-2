@@ -11,14 +11,14 @@ import math
 import pandas as pd
 import streamlit as st
 
-from src import auth, servicios, ui
+from src import auth, config as C, servicios, ui
 
 usuario = auth.exigir_acceso("P7")
 ui.cabecera("P7", usuario, extra="KPI específicos de tu función; las fuentes aparecen en cada tarjeta")
 
 
 def tarjetas(datos: list[tuple[str, str, str]]) -> None:
-    cols = st.columns(3, gap="medium")
+    cols = st.columns(len(datos), gap="medium")
     for col, (nombre, valor, explicacion) in zip(cols, datos):
         with col:
             st.metric(nombre, valor, help=explicacion, border=True)
@@ -58,6 +58,10 @@ elif usuario.rol == "gerente":
     ui.origen("REAL", "CALCULADO")
     tasa = indicadores["tasa_default"]
     dti = indicadores["dti_promedio"]
+    # Juan: segmentación ya existente y autorizada para el rol gerente.
+    tabla_dti = servicios.tasa_cruzada(usuario.rol, tuple(), "SEG_DTI", None)
+    tabla_dti = tabla_dti.set_index("SEG_DTI").reindex(C.SEGMENTOS["SEG_DTI"]["orden"])
+    tasa_dti_alto = float(tabla_dti.loc["Alto", "tasa"])
     tarjetas([
         ("Registros crediticios", f"{indicadores['registros']:,}",
          "REAL · Número de filas del CSV, no necesariamente créditos únicos."),
@@ -65,6 +69,8 @@ elif usuario.rol == "gerente":
          "CALCULADO / REAL · DEFAULT = 1 dividido entre DEFAULT con dato válido."),
         ("DTI promedio", f"{dti:.2%}" if math.isfinite(dti) else "—",
          "CALCULADO / REAL · Promedio de DEBT_TO_INCOME. Es una medida descriptiva de endeudamiento."),
+        ("Default con DTI alto", f"{tasa_dti_alto:.2%}" if math.isfinite(tasa_dti_alto) else "—",
+         "CALCULADO / REAL · Proporción de DEFAULT = 1 en el tercil más alto de DTI (n ≥ 30)."),
     ])
     st.caption(
         f"Fuente: Base_SAS_Equipo3.csv · {indicadores['incumplimientos']:,} resultados DEFAULT = 1 "
@@ -72,10 +78,31 @@ elif usuario.rol == "gerente":
         "Sin fecha ni identificador de solicitud no es posible interpretar estos datos como cartera vigente o tendencia."
     )
     st.caption("**Decisión:** dimensionar la exposición histórica y priorizar análisis de segmentos antes de modificar la política crediticia.")
+
+    # Juan: cuatro preguntas de negocio y una gráfica comparativa de riesgo por DTI.
+    with st.expander("Preguntas de negocio · 4 KPI"):
+        st.markdown(
+            "1. **Registros crediticios:** ¿Cuántos registros históricos estamos analizando?\n"
+            "2. **Tasa histórica de incumplimiento:** ¿Qué proporción terminó en default?\n"
+            "3. **DTI promedio:** ¿Cuál es el nivel medio de endeudamiento?\n"
+            "4. **Default con DTI alto:** ¿Qué proporción incumple entre los más endeudados?"
+        )
+    st.subheader("Incumplimiento histórico por nivel de endeudamiento (DTI)")
+    grafica_dti = tabla_dti[["tasa"]].rename(columns={"tasa": "Tasa de incumplimiento (%)"}) * 100
+    if grafica_dti["Tasa de incumplimiento (%)"].notna().any():
+        st.bar_chart(grafica_dti, y="Tasa de incumplimiento (%)", use_container_width=True)
+    else:
+        st.info("No hay segmentos con suficientes registros para mostrar tasas.")
+    st.caption(
+        "Fuente: CSV REAL. Segmentos Bajo, Medio y Alto calculados mediante terciles de DTI; "
+        f"se omiten tasas con menos de {C.N_MINIMO} registros por segmento. "
+        "La asociación observada no implica causalidad ni constituye una predicción."
+    )
     metodologia = [
         {"KPI": "Registros crediticios", "Fórmula": "Número de filas del CSV", "Origen": "REAL"},
         {"KPI": "Tasa histórica de incumplimiento", "Fórmula": "Conteo(DEFAULT = 1) / Conteo(DEFAULT válido)", "Origen": "CALCULADO / REAL"},
         {"KPI": "DTI promedio", "Fórmula": "Promedio(DEBT_TO_INCOME) × 100 para expresarlo en %", "Origen": "CALCULADO / REAL"},
+        {"KPI": "Default con DTI alto", "Fórmula": "Media(DEFAULT) en SEG_DTI = Alto, con n ≥ 30", "Origen": "CALCULADO / REAL"},
     ]
 
 elif usuario.rol == "operacion":
