@@ -183,6 +183,16 @@ with st.container(border=True):
         corte_pct = st.slider(f"C2 · {C.CONTROLES['C2']['nombre']} para este segmento", 5.0, 30.0, step=0.5,
                               format="%.1f%%", key="p3_c2")
         st.caption(ui.amarre("C2"))
+        with st.expander("Compartir propuesta de cambio con analistas"):
+            st.caption("El corte que estás explorando es una simulación. "
+                       "Compartirlo deja un aviso visible en la bandeja; NO modifica las decisiones.")
+            if st.button("Notificar nueva propuesta", key="p3_enviar_propuesta",
+                         disabled=abs(corte_pct/100 - C.CORTE_PD) < 0.0001):
+                if juan_politica.publicar_propuesta(
+                        usuario.nombre, datos.describir_filtros(dict(filtros)),
+                        C.CORTE_PD, corte_pct/100):
+                    st.success("Propuesta registrada. Los analistas verán la notificación en su bandeja.")
+
         corte = corte_pct / 100
         g, m = st.columns([1.7, 1], gap="medium")
         with g:
