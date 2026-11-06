@@ -6,13 +6,20 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src import almacen, auth, config as C, graficas as G, servicios, simulacion as S, ui
+from src import almacen, auth, campeon, config as C, graficas as G, servicios, simulacion as S, ui
 from src.modelo import calibracion, psi
 from src.seguridad import enmascarar
 from src.ui import pct
 
 usuario = auth.exigir_acceso("P4")
 ui.cabecera("P4", usuario, extra="Solo métricas y distribuciones agregadas")
+with st.container(border=True):
+    a, b = st.columns([2, 1])
+    a.markdown("**Monitor operativo · control de calidad y riesgo**")
+    b.metric("Campeón experimental SAS (KS)", f"{campeon.KS:.4f}", border=False)
+    st.caption("El monitoreo demostrativo de esta pantalla todavía emplea scoring logístico, "
+               "no el artefacto Gradient Boosting registrado en SAS.")
+
 modelo = servicios.modelo()
 
 ORDEN_SEVERIDAD = {"frescura": 0, "psi": 1, "aprobacion": 2, "incompletos": 3, "pd": 4, "acuerdo": 5}
@@ -131,6 +138,29 @@ def monitor() -> None:
                                          "vigilar" if psis[var_peor] > C.UMBRAL_PSI_VIGILAR else "ok")
     est_inc = estado(incompletos, hi=C.UMBRAL_INCOMPLETOS)
 
+    # --- Semáforos ---------------------------------------------------------------
+    sufijo = f" · dato de las {carga:%H:%M}" if viejo else ""
+    s1, s2, s3, s4, s5 = st.columns(5)
+    with s1:
+        delta = f"{(aprob - aprob_prev) * 100:+.1f} pp vs. {'hora previa' if ventana == 'Última hora' else 'ayer'}" \
+            if ventana != "7 días" and not np.isnan(aprob_prev) else None
+        ui.semaforo("Tasa de aprobación", pct(aprob), est_aprob,
+                    f"Banda {C.BANDA_APROBACION[0]:.0%}–{C.BANDA_APROBACION[1]:.0%} · cada hora{sufijo}", delta)
+    with s2:
+        ui.semaforo("PD promedio", pct(pd_prom), est_pd,
+                    f"Base 13.5% ± 3 pp · PD CALCULADA{sufijo}")
+    with s3:
+        ui.semaforo("Acuerdo modelo–analista", pct(acuerdo), est_acuerdo,
+                    f"Meta ≥ {C.META_ACUERDO:.0%} · diario · incluye {len(reales)} decisiones reales de hoy{sufijo}")
+    with s4:
+        ui.semaforo(f"Drift de {C.ETIQUETAS[var_peor].split(' (')[-1].rstrip(')')} (PSI)", f"{psis[var_peor]:.2f}", est_psi,
+                    "Mayor de: " + " · ".join(f"{C.ETIQUETAS[v].split('(')[-1].rstrip(')')} {psis[v]:.2f}" for v in C.VARIABLES_DRIFT)
+                    + f" · umbral {C.UMBRAL_PSI_ALERTA}{sufijo}", origen_tag="CALCULADO")
+    with s5:
+        ui.semaforo("Datos incompletos", pct(incompletos), est_inc,
+                    f"Base REAL 0% · alerta > {C.UMBRAL_INCOMPLETOS:.0%} · cada carga{sufijo}")
+
+
     # --- Alertas arriba, ordenadas por gravedad ---------------------------------
     alertas = []
     fecha = hoy.isoformat()
@@ -196,28 +226,6 @@ def monitor() -> None:
     else:
         st.success("Todas las métricas en banda. Sin alertas activas.", icon=":material/check_circle:")
 
-    # --- Semáforos ---------------------------------------------------------------
-    sufijo = f" · dato de las {carga:%H:%M}" if viejo else ""
-    s1, s2, s3, s4, s5 = st.columns(5)
-    with s1:
-        delta = f"{(aprob - aprob_prev) * 100:+.1f} pp vs. {'hora previa' if ventana == 'Última hora' else 'ayer'}" \
-            if ventana != "7 días" and not np.isnan(aprob_prev) else None
-        ui.semaforo("Tasa de aprobación", pct(aprob), est_aprob,
-                    f"Banda {C.BANDA_APROBACION[0]:.0%}–{C.BANDA_APROBACION[1]:.0%} · cada hora{sufijo}", delta)
-    with s2:
-        ui.semaforo("PD promedio", pct(pd_prom), est_pd,
-                    f"Base 13.5% ± 3 pp · PD CALCULADA{sufijo}")
-    with s3:
-        ui.semaforo("Acuerdo modelo–analista", pct(acuerdo), est_acuerdo,
-                    f"Meta ≥ {C.META_ACUERDO:.0%} · diario · incluye {len(reales)} decisiones reales de hoy{sufijo}")
-    with s4:
-        ui.semaforo(f"Drift de {C.ETIQUETAS[var_peor].split(' (')[-1].rstrip(')')} (PSI)", f"{psis[var_peor]:.2f}", est_psi,
-                    "Mayor de: " + " · ".join(f"{C.ETIQUETAS[v].split('(')[-1].rstrip(')')} {psis[v]:.2f}" for v in C.VARIABLES_DRIFT)
-                    + f" · umbral {C.UMBRAL_PSI_ALERTA}{sufijo}", origen_tag="CALCULADO")
-    with s5:
-        ui.semaforo("Datos incompletos", pct(incompletos), est_inc,
-                    f"Base REAL 0% · alerta > {C.UMBRAL_INCOMPLETOS:.0%} · cada carga{sufijo}")
-
     # --- Gráficas -----------------------------------------------------------------
     g1, g2, g3 = st.columns(3, gap="medium")
     with g1, st.container(border=True):
@@ -250,6 +258,9 @@ with tab_monitor:
 
 with tab_salud:
     m = modelo.metricas
+    st.warning("Estas métricas corresponden al motor logístico demostrativo. "
+               "Para monitorear el campeón SAS se requiere exportar el modelo y sus scores en el mismo corte.",
+               icon=":material/info:")
     ui.titulo_grafica("¿El modelo sigue separando buenos de malos pagadores?", "CALCULADO", "REAL")
     estado_auc = "ok" if m["auc"] >= C.AUC_MINIMO else "alerta"
     c1, c2, c3, c4 = st.columns(4)

@@ -1,7 +1,8 @@
 """Modelo de probabilidad de default (PD) y sus explicaciones.
 
-Se usa regresión logística estandarizada: iguala el AUC de un gradient boosting
-sobre esta base y permite explicar cada caso sin librerías extra.
+En esta aplicación se usa regresión logística estandarizada para la demostración
+operativa. El campeón Gradient Boosting de SAS se documenta por separado:
+no debe confundirse con las predicciones generadas aquí.
 """
 from __future__ import annotations
 

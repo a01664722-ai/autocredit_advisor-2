@@ -15,6 +15,10 @@ usuario = auth.exigir_acceso("P2")
 modelo = servicios.modelo()
 cola, originales = servicios.cola_analista(usuario)
 ui.cabecera("P2", usuario)
+# Notificación de cambios gerenciales en la parte superior del flujo.
+from src.juan_dashboard import avisos_analista
+avisos_analista(usuario)
+
 
 
 def _ir_bandeja():
@@ -106,50 +110,50 @@ if estado == "En espera de documento":
 if ev.pd is None:
     st.stop()
 
-# --- Fila 1: G1 (corte) y G3 (buen pagador) -----------------------------------
-c1, c2 = st.columns(2, gap="medium")
-with c1, st.container(border=True):
-    ui.titulo_grafica("¿Está arriba o abajo del corte?", "CALCULADO", "POLÍTICA", codigo="G1 · barra con corte")
-    veredicto = {
-        "Aprobar": ("El modelo sugiere APROBAR", "green", ":material/check:"),
-        "Condicionar": (f"El modelo sugiere CONDICIONAR: enganche ≥ {ev.enganche_requerido:.1%}" if ev.enganche_requerido else "", "orange", ":material/tune:"),
-        "Rechazar": ("El modelo sugiere RECHAZAR: ni con 31% de enganche baja del corte", "red", ":material/close:"),
-        "Revisión manual": ("Sin recomendación: dato fuera de rango", "gray", ":material/help:"),
-    }[ev.sugerencia]
-    with st.container(horizontal=True, vertical_alignment="center"):
-        st.markdown(f"## PD {ev.pd:.1%}")
-        st.badge(veredicto[0], color=veredicto[1], icon=veredicto[2])
-    G.mostrar(G.g1_barra_corte(ev.pd, C.CORTE_PD, modelo.tasa_base), key="g1")
-    distancia = (ev.pd - C.CORTE_PD) * 100
-    st.caption(f"Nivel **{ev.nivel}** · {abs(distancia):.1f} pp {'sobre' if distancia >= 0 else 'bajo'} el corte "
-               f"de {C.CORTE_PD:.0%}. Promedio de cartera {modelo.tasa_base:.2%} = DEFAULT REAL de las 80,000 filas.")
-
-with c2, st.container(border=True):
-    ui.titulo_grafica("¿En qué se aleja de un buen pagador?", "REAL", "CALCULADO", codigo="G3 · barras pareadas")
-    variables = ["DEBT_TO_INCOME", "PAYMENT_TO_INCOME", "LOAN_TO_VALUE", "DOWN_PAYMENT_PCT", "REVOLVING_UTILIZATION"]
-    valores_cliente = [float(fila[v]) if pd.notna(fila[v]) else modelo.medianas[v] for v in variables]
-    G.mostrar(G.g3_pareadas(variables, valores_cliente, [modelo.mediana_buenos[v] for v in variables]), key="g3")
-    st.caption("Mismo eje en % para las cinco razones. Referencia: mediana de los créditos con DEFAULT = 0.")
-
-# --- Fila 2: G2 (contribuciones) y expediente ----------------------------------
-c3, c4 = st.columns(2, gap="medium")
-with c3, st.container(border=True):
-    ui.titulo_grafica("¿Qué sube o baja el riesgo de ESTE caso?", "CALCULADO", codigo="G2 · barras divergentes")
-    G.mostrar(G.g2_contribuciones(ev.contribuciones, datos.formatear), key="g2")
-    st.caption("Cada barra = cuántos puntos de PD cambiaría si esa variable tomara el valor típico de la cartera "
-               "(mediana) y todo lo demás quedara igual. Rojo sube el riesgo; azul lo baja.")
-
-with c4, st.container(border=True):
-    ui.titulo_grafica("Expediente: solo lo que la decisión necesita", "REAL")
-    exp = pd.DataFrame({
-        "Variable": [C.ETIQUETAS[v] for v in modelo.variables],
-        "Valor": [datos.formatear(v, fila[v]) + (" · IMPUTADO" if v in ev.imputados else "")
-                  + (" · FUERA DE RANGO" if v in ev.fuera_rango else "") for v in modelo.variables],
-        "Típico buen pagador": [datos.formatear(v, modelo.mediana_buenos[v]) for v in modelo.variables],
-    })
-    st.dataframe(exp, hide_index=True, height=388)
-    ocultos = [f["dato"] for f in MATRIZ_DATOS if f["analista"] == OCULTO and f["grupo"] != "Calculado"]
-    st.caption("Ocultos por política (no cambian la decisión o filtrarían el resultado): " + ", ".join(ocultos) + ".")
+# --- Resumen y acciones visibles sin desplazamiento ----------------------------
+with st.container(border=True):
+    st.markdown("**Decisión crediticia · Solicitud en revisión**")
+    a, b, c, d = st.columns(4, gap="small")
+    a.metric("Riesgo calculado (logit demo)", f"{ev.pd:.1%}", border=False,
+             help="PD del modelo logístico de demostración, no del campeón Gradient Boosting SAS.")
+    b.metric("Referencia cartera", f"{modelo.tasa_base:.2%}", border=False)
+    dti_actual = fila.get("DEBT_TO_INCOME")
+    c.metric("Deuda / ingreso", f"{dti_actual:.1%}" if pd.notna(dti_actual) else "Sin dato",
+             border=False)
+    d.metric("Corte propuesto", f"{C.CORTE_PD:.0%}", border=False)
+    dist = (ev.pd - C.CORTE_PD)*100
+    st.caption(f"Diferencia frente al corte: {dist:+.1f} puntos porcentuales. "
+               "Corte de política del equipo, sujeto a calibración; no es autorización automática.")
+    if ev.bloquea_aprobar or estado == "En espera de documento" or ev.fuera_rango:
+        st.error("Revisión obligatoria: datos incompletos, inválidos, en espera o fuera de rango. "
+                 "No autorizar sin verificar documentación.", icon=":material/warning:")
+    st.markdown("**Elegir rápidamente una decisión**")
+    st.markdown("""
+    <style>
+    div.st-key-p2_aprobar button {background:#103d25!important;color:#72f3a8!important;
+        border:2px solid #138b4f!important;border-radius:12px!important;font-weight:750!important;}
+    div.st-key-p2_condicionar button {background:#42300e!important;color:#ffd77a!important;
+        border:2px solid #a8730d!important;border-radius:12px!important;font-weight:750!important;}
+    div.st-key-p2_rechazar button {background:#491b24!important;color:#ff9ba7!important;
+        border:2px solid #ac3c53!important;border-radius:12px!important;font-weight:750!important;}
+    div.st-key-p2_aprobar button:hover {background:#165a36!important;}
+    div.st-key-p2_condicionar button:hover {background:#604610!important;}
+    div.st-key-p2_rechazar button:hover {background:#682632!important;}
+    </style>""",unsafe_allow_html=True)
+    ca, cc, cr = st.columns(3, gap="small")
+    k_rapida = f"dec_{folio}"
+    for col, etiqueta, clave in ((ca, "Aprobar", "p2_aprobar"),
+                                (cc, "Condicionar", "p2_condicionar"),
+                                (cr, "Rechazar", "p2_rechazar")):
+        with col:
+            if st.button(etiqueta, key=clave, use_container_width=True,
+                         disabled=etiqueta != "Rechazar" and
+                                  (ev.bloquea_aprobar or estado == "En espera de documento" or bool(ev.fuera_rango))
+                         ):
+                st.session_state[k_rapida] = etiqueta
+                st.rerun()
+    st.caption("Selecciona una acción y confirma en el formulario siguiente: "
+               "no se guarda ningún dictamen al pulsar el botón.")
 
 # --- Decisión ------------------------------------------------------------------
 clave = f"{folio}"
@@ -268,6 +272,54 @@ with st.container(border=True):
             st.switch_page("vistas/p1_bandeja.py")
     st.caption("Al guardar se registran decisión, motivo, PD y tiempo (alimentan el acuerdo modelo–analista que "
                "vigila Luis) y se abre la siguiente solicitud pendiente de mayor PD.")
+
+
+
+# --- Diagnóstico detallado (tras la decisión visible) --------------------------
+# --- Fila 1: G1 (corte) y G3 (buen pagador) -----------------------------------
+c1, c2 = st.columns(2, gap="medium")
+with c1, st.container(border=True):
+    ui.titulo_grafica("¿Está arriba o abajo del corte?", "CALCULADO", "POLÍTICA", codigo="G1 · barra con corte")
+    veredicto = {
+        "Aprobar": ("El modelo sugiere APROBAR", "green", ":material/check:"),
+        "Condicionar": (f"El modelo sugiere CONDICIONAR: enganche ≥ {ev.enganche_requerido:.1%}" if ev.enganche_requerido else "", "orange", ":material/tune:"),
+        "Rechazar": ("El modelo sugiere RECHAZAR: ni con 31% de enganche baja del corte", "red", ":material/close:"),
+        "Revisión manual": ("Sin recomendación: dato fuera de rango", "gray", ":material/help:"),
+    }[ev.sugerencia]
+    with st.container(horizontal=True, vertical_alignment="center"):
+        st.markdown(f"## PD {ev.pd:.1%}")
+        st.badge(veredicto[0], color=veredicto[1], icon=veredicto[2])
+    G.mostrar(G.g1_barra_corte(ev.pd, C.CORTE_PD, modelo.tasa_base), key="g1")
+    distancia = (ev.pd - C.CORTE_PD) * 100
+    st.caption(f"Nivel **{ev.nivel}** · {abs(distancia):.1f} pp {'sobre' if distancia >= 0 else 'bajo'} el corte "
+               f"de {C.CORTE_PD:.0%}. Promedio de cartera {modelo.tasa_base:.2%} = DEFAULT REAL de las 80,000 filas.")
+
+with c2, st.container(border=True):
+    ui.titulo_grafica("¿En qué se aleja de un buen pagador?", "REAL", "CALCULADO", codigo="G3 · barras pareadas")
+    variables = ["DEBT_TO_INCOME", "PAYMENT_TO_INCOME", "LOAN_TO_VALUE", "DOWN_PAYMENT_PCT", "REVOLVING_UTILIZATION"]
+    valores_cliente = [float(fila[v]) if pd.notna(fila[v]) else modelo.medianas[v] for v in variables]
+    G.mostrar(G.g3_pareadas(variables, valores_cliente, [modelo.mediana_buenos[v] for v in variables]), key="g3")
+    st.caption("Mismo eje en % para las cinco razones. Referencia: mediana de los créditos con DEFAULT = 0.")
+
+# --- Fila 2: G2 (contribuciones) y expediente ----------------------------------
+c3, c4 = st.columns(2, gap="medium")
+with c3, st.container(border=True):
+    ui.titulo_grafica("¿Qué sube o baja el riesgo de ESTE caso?", "CALCULADO", codigo="G2 · barras divergentes")
+    G.mostrar(G.g2_contribuciones(ev.contribuciones, datos.formatear), key="g2")
+    st.caption("Cada barra = cuántos puntos de PD cambiaría si esa variable tomara el valor típico de la cartera "
+               "(mediana) y todo lo demás quedara igual. Rojo sube el riesgo; azul lo baja.")
+
+with c4, st.container(border=True):
+    ui.titulo_grafica("Expediente: solo lo que la decisión necesita", "REAL")
+    exp = pd.DataFrame({
+        "Variable": [C.ETIQUETAS[v] for v in modelo.variables],
+        "Valor": [datos.formatear(v, fila[v]) + (" · IMPUTADO" if v in ev.imputados else "")
+                  + (" · FUERA DE RANGO" if v in ev.fuera_rango else "") for v in modelo.variables],
+        "Típico buen pagador": [datos.formatear(v, modelo.mediana_buenos[v]) for v in modelo.variables],
+    })
+    st.dataframe(exp, hide_index=True, height=388)
+    ocultos = [f["dato"] for f in MATRIZ_DATOS if f["analista"] == OCULTO and f["grupo"] != "Calculado"]
+    st.caption("Ocultos por política (no cambian la decisión o filtrarían el resultado): " + ", ".join(ocultos) + ".")
 
 ui.pie_origen("Los valores de esta solicitud son una fila REAL del holdout; la PD y las contribuciones se "
               "calculan con el modelo entrenado en el otro 75% de la base.")
