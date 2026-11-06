@@ -66,3 +66,19 @@ def marcar_leidos(email, ruta=None):
     with conexion(ruta) as con:
         ultimo = con.execute("SELECT COALESCE(MAX(id),0) FROM juan_avisos").fetchone()[0]
         con.execute("INSERT OR REPLACE INTO juan_lecturas VALUES (?,?)", (email,ultimo))
+
+def publicar_propuesta(autor, segmento, corte_anterior, corte_nuevo, ruta=None):
+    """Aviso de propuesta gerencial, no altera el cálculo ni el dictamen de crédito."""
+    viejo, nuevo = float(corte_anterior), float(corte_nuevo)
+    if not (0 <= viejo <= 1 and 0 <= nuevo <= 1):
+        raise ValueError("Los cortes deben ser porcentajes de 0 a 100")
+    if viejo == nuevo:
+        return False
+    fecha = datetime.now(ZoneInfo(C.ZONA_HORARIA)).isoformat(timespec="minutes")
+    descripcion = (f"Propuesta de corte de riesgo para segmento {segmento}: "
+                   f"{viejo:.2%} → {nuevo:.2%}. Requiere validación antes de aplicar "
+                   "a solicitudes; NO cambia decisiones ni el motor en ejecución.")
+    with conexion(ruta) as con:
+        con.execute("INSERT INTO juan_avisos(fecha,autor,texto) VALUES (?,?,?)",
+                    (fecha,autor,descripcion))
+    return True
