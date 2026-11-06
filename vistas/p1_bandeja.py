@@ -23,6 +23,10 @@ div.st-key-p1_rechazar button:hover {background:#68272e!important;}
 </style>""", unsafe_allow_html=True)
 
 ui.cabecera("P1", usuario, extra=f"Solo ves lo asignado a **{usuario.analista_id}**")
+# Notificación de cambios gerenciales en la parte superior del flujo.
+from src.juan_dashboard import avisos_analista
+avisos_analista(usuario)
+
 
 cola, _ = servicios.cola_analista(usuario)
 hoy = date.today().isoformat()
