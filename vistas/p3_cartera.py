@@ -8,10 +8,18 @@ import streamlit as st
 
 from src import config as C, datos, graficas as G, servicios, ui
 from src import auth
+from src import campeon, juan_politica
 from src.ui import pct
 
 usuario = auth.exigir_acceso("P3")
 ui.cabecera("P3", usuario, extra="Solo agregados con n ≥ 30; ningún crédito individual")
+with st.container(border=True):
+    p1, p2, p3 = st.columns([1.6, 1, 1.2])
+    p1.markdown("**Cartera crediticia · Resumen para gerencia**")
+    p2.metric("Campeón SAS · KS validación", f"{campeon.KS:.4f}", border=False)
+    p3.caption("Las simulaciones de cortes en esta pantalla siguen utilizando el motor logístico de demostración.")
+st.page_link("vistas/p7_kpis.py", label="Abrir KPIs y metas de gerencia", icon=":material/tune:")
+
 
 FIDS = ["F3", "F4", "F5", "F6"]
 CLAVES = {f: f"p3_{f}" for f in FIDS}
@@ -81,7 +89,10 @@ cols_orden = C.SEGMENTOS[seg_col]["orden"]
 if fid_col and seleccion[fid_col] != C.TODOS:
     cols_orden = [seleccion[fid_col]]
 tabla = servicios.tasa_cruzada(usuario.rol, filtros, "SEG_DTI", seg_col)
-fuera = tabla[tabla["tasa"] > C.TOLERANCIA_SEGMENTO]
+# La meta de gerencia prevalece en visualización, sin modificar el motor ni aprobaciones.
+metas_juan = juan_politica.leer_metas()
+tolerancia = metas_juan.get("incumplimiento", C.TOLERANCIA_SEGMENTO)
+fuera = tabla[tabla["tasa"] > tolerancia]
 cortes_dti = servicios.cortes_dti()
 
 # --- KPIs del corte -------------------------------------------------------------
@@ -93,10 +104,22 @@ k2.metric("Tasa de default", pct(resumen["tasa"]), border=True,
           delta_color="inverse" if abs(dif_cartera) >= 0.05 else "off",
           delta_arrow="auto" if abs(dif_cartera) >= 0.05 else "off",
           help="CALCULADO: proporción de DEFAULT = 1 (REAL) dentro del corte.")
-k3.metric("Tolerancia de la política", f"{C.TOLERANCIA_SEGMENTO:.0%}", border=True,
+k3.metric("Tolerancia de la política", f"{tolerancia:.0%}", border=True,
           help=f"POLÍTICA del equipo. Regla de muestra mínima: n ≥ {C.N_MINIMO} por celda.")
 k4.metric("Celdas sobre la tolerancia", f"{len(fuera)} de {int(tabla['suficiente'].sum())}", border=True,
           help="CALCULADO: celdas del mapa de calor con n ≥ 30 y default mayor a la tolerancia.")
+if resumen["tasa"] > tolerancia:
+    st.error(
+        f"Incumplimiento histórico del segmento {resumen['tasa']:.2%} fuera de la referencia "
+        f"{tolerancia:.2%}. Se recomienda evaluar el segmento antes de cambiar la política.",
+        icon=":material/warning:")
+else:
+    st.success(
+        f"El incumplimiento histórico del segmento ({resumen['tasa']:.2%}) está dentro de "
+        f"la referencia ({tolerancia:.2%}).",icon=":material/check_circle:")
+st.caption("Referencia: meta de gerencia si está activa; en otro caso, tolerancia propuesta del equipo. "
+           "No equivale a aprobación de un crédito.")
+
 
 
 izq, der = st.columns([1.3, 1], gap="medium")
@@ -107,7 +130,7 @@ with izq, st.container(border=True):
     st.caption(ui.amarre("C1"))
     G.mostrar(G.g5_mapa_calor(tabla, filas_dti, cols_orden, "SEG_DTI", seg_col, C.TOLERANCIA_SEGMENTO), key="g5")
     st.caption(f"Filas = terciles de DTI (CALCULADO: cortes {cortes_dti[0]:.1%} y {cortes_dti[1]:.1%}). Borde rojo = supera la "
-               f"tolerancia de {C.TOLERANCIA_SEGMENTO:.0%}. Más oscuro = más default. Gris = n < {C.N_MINIMO}.")
+               f"tolerancia de {tolerancia:.0%}. Más oscuro = más default. Gris = n < {C.N_MINIMO}.")
     ui.ver_tabla(tabla.assign(tasa=tabla["tasa"].map(pct)).rename(
         columns={"SEG_DTI": "DTI", seg_col: cruce, "tasa": "Default", "n": "n (REAL)", "suficiente": "n ≥ 30"}))
 
