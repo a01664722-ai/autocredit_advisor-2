@@ -9,6 +9,19 @@ from src import almacen, auth, config as C, servicios, ui
 from src.simulacion import texto_hace
 
 usuario = auth.exigir_acceso("P1")
+st.markdown("""
+<style>
+div.st-key-p1_aprobar button {background:#103d25!important;border:2px solid #148d4f!important;
+color:#79f2a9!important;border-radius:12px!important;font-weight:750!important;}
+div.st-key-p1_condicionar button {background:#422f10!important;border:2px solid #a57920!important;
+color:#ffd77a!important;border-radius:12px!important;font-weight:750!important;}
+div.st-key-p1_rechazar button {background:#481d25!important;border:2px solid #b64254!important;
+color:#ff9da6!important;border-radius:12px!important;font-weight:750!important;}
+div.st-key-p1_aprobar button:hover {background:#1a5a35!important;}
+div.st-key-p1_condicionar button:hover {background:#624612!important;}
+div.st-key-p1_rechazar button:hover {background:#68272e!important;}
+</style>""", unsafe_allow_html=True)
+
 ui.cabecera("P1", usuario, extra=f"Solo ves lo asignado a **{usuario.analista_id}**")
 
 cola, _ = servicios.cola_analista(usuario)
