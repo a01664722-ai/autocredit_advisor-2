@@ -79,6 +79,37 @@ else:
         "DTI": vista["DEBT_TO_INCOME"].map(lambda v: "falta" if pd.isna(v) else f"{v:.0%}"),
         "LTV": vista["LOAN_TO_VALUE"].map(lambda v: "falta" if pd.isna(v) else f"{v:.0%}"),
     })
+    # Acción rápida: prepara la decisión para la ficha; nunca registra sin confirmar.
+    prioridad = vista.iloc[0]
+    with st.container(border=True):
+        st.markdown("**Siguiente solicitud prioritaria** · información para decidir")
+        z1, z2, z3, z4 = st.columns(4, gap="small")
+        z1.metric("Folio (simulado)", str(prioridad["FOLIO"]), border=False)
+        z2.metric("Riesgo estimado (logit demo)", f'{prioridad["PD"]:.1%}', border=False,
+                  help="Predicción del modelo logístico de demostración, NO del campeón SAS.")
+        z3.metric("Deuda / ingreso", f'{prioridad["DEBT_TO_INCOME"]:.1%}' if pd.notna(prioridad["DEBT_TO_INCOME"]) else "Sin dato", border=False)
+        z4.metric("Calidad", str(prioridad["CALIDAD"]), border=False)
+        if prioridad["CALIDAD"] != "Completo" or prioridad["NIVEL"] == "Alto":
+            st.warning("Atención: riesgo elevado o datos por revisar. La ficha verificará los bloqueos antes del registro.",
+                       icon=":material/warning:")
+        st.caption("Estos botones solo preparan la decisión; después se confirma y registra en la ficha del caso.")
+        b_ap, b_co, b_re, b_det = st.columns([1, 1, 1, 1.2], gap="small")
+        acciones = [
+            (b_ap, "Aprobar", "p1_aprobar"),
+            (b_co, "Condicionar", "p1_condicionar"),
+            (b_re, "Rechazar", "p1_rechazar"),
+        ]
+        for columna, accion, clave_btn in acciones:
+            with columna:
+                if st.button(accion, key=clave_btn, use_container_width=True):
+                    st.session_state["folio_actual"] = prioridad["FOLIO"]
+                    st.session_state[f'dec_{prioridad["FOLIO"]}'] = accion
+                    st.switch_page("vistas/p2_ficha.py")
+        with b_det:
+            if st.button("Ver detalles", key="p1_detalle", use_container_width=True):
+                st.session_state["folio_actual"] = prioridad["FOLIO"]
+                st.switch_page("vistas/p2_ficha.py")
+
     seleccion = st.dataframe(
         tabla, hide_index=True, on_select="rerun", selection_mode="single-row", key="p1_tabla",
         column_config={
