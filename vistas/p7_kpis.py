@@ -56,9 +56,26 @@ if usuario.rol == "analista":
     ]
 
 elif usuario.rol == "gerente":
+    from src import campeon
+    with st.container(border=True):
+        a, b, c = st.columns([1.7, 1, 1], gap="small")
+        with a:
+            st.markdown("**Modelo campeón documentado en SAS Viya**")
+            st.caption("Incremento de gradiente (Gradient Boosting) · validación de Entrega 4")
+        with b:
+            st.metric("KS de validación", f"{campeon.KS:.4f}", border=False)
+        with c:
+            st.badge("Campeón del experimento SAS", color="green")
+    st.warning(campeon.AVISO, icon=":material/info:")
     # Juan: solo métricas agregadas y filtros de la muestra de entrenamiento.
     from src.juan_dashboard import mostrar_gerente
     mostrar_gerente(usuario)
+    with st.expander("Comparación de modelos (KS de validación en SAS)"):
+        st.dataframe(
+            pd.DataFrame([{"Modelo": k, "KS validación": v, "Campeón": "Sí" if v == campeon.KS else "No"}
+                          for k, v in campeon.COMPARACION_KS.items()]),
+            hide_index=True, width="stretch")
+        st.caption("Resultados extraídos del borrador de Entrega 4. No son métricas del motor logístico de la app.")
     metodologia = [
         {"KPI": "Volumen", "Fórmula": "Registros del corte", "Origen": "REAL / TRAIN 12V"},
         {"KPI": "Incumplimiento", "Fórmula": "DEFAULT=1 / registros", "Origen": "REAL / TRAIN 12V"},
