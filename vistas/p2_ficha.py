@@ -15,6 +15,10 @@ usuario = auth.exigir_acceso("P2")
 modelo = servicios.modelo()
 cola, originales = servicios.cola_analista(usuario)
 ui.cabecera("P2", usuario)
+# Notificación de cambios gerenciales en la parte superior del flujo.
+from src.juan_dashboard import avisos_analista
+avisos_analista(usuario)
+
 
 
 def _ir_bandeja():
