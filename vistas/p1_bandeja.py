@@ -132,6 +132,11 @@ else:
     tabla.rename(columns={"Folio": "Loan ID" if id_real else "Folio*"}, inplace=True)
     id_col = "Loan ID" if id_real else "Folio*"
 
+    # La acción debe estar junto al identificador: nunca escondida al final
+    # de una tabla con desplazamiento horizontal.
+    tabla = tabla[[id_col, "Acción", "PD**", "Sugerencia", "Riesgo",
+                   "Calidad", "Recibida*", "DTI", "LTV"]]
+
     # La tabla es interactiva: cada fila ofrece una decisión independiente.
     # El selector es solo un borrador; la ficha exige validación y confirmación.
     editada = st.data_editor(
