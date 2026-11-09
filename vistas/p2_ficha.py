@@ -94,7 +94,8 @@ else:
              "de emitir una autorización.", icon=":material/error:")
 
 id_real = bool(registro.get("ID_REAL", False))
-st.title(f"Solicitud {folio}" + ("" if id_real else "*"))
+st.title("P2 · Ficha de solicitud")
+st.markdown(f"**Solicitud {folio}" + ("" if id_real else "*") + "**")
 st.caption("Folio* y recepción* son datos operativos simulados; los atributos crediticios "
            "proceden de la base histórica. ** PD calculada con logit de demostración.")
 with st.container(horizontal=True, vertical_alignment="center"):
