@@ -1,7 +1,7 @@
 name: Verificar interfaz y KPIs
 on:
   push:
-    branches: [juan-kpis-20261105, entrega4-seguimiento]
+    branches: [juan-kpis-20261105, entrega4-seguimiento, ux-juan-tableros-20261107]
   pull_request:
     branches: [entrega4-seguimiento]
 jobs:
