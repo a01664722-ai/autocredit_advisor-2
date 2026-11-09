@@ -43,7 +43,7 @@ if minutos is not None and minutos > C.META_MINUTOS_DECISION:
              f"de {C.META_MINUTOS_DECISION} min.", icon=":material/warning:")
 elif n_espera:
     st.warning(f"{n_espera} solicitudes necesitan seguimiento documental.", icon=":material/report:")
-st.title("Bandeja de solicitudes")
+st.title("P1 · Bandeja de solicitudes")
 st.caption(f"Analista: {usuario.nombre} · Solo casos asignados a {usuario.analista_id} · "
            "Modelo de PD: regresión logística de demostración, no el campeón de SAS.")
 avisos_analista(usuario)
