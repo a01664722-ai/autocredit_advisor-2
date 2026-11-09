@@ -131,8 +131,10 @@ def cola_analista(usuario: seguridad.Usuario) -> tuple[pd.DataFrame, dict]:
     est = almacen.estados(usuario.analista_id)
     cola["ESTADO_SOLICITUD"] = cola["FOLIO"].map(est).fillna("Pendiente")
     cola = cola[cola["ANALISTA_ID"] == usuario.analista_id]
-    columnas = ["FOLIO", "RECIBIDA_MIN", "PD", "NIVEL", "CALIDAD", "SUGERENCIA", "ESTADO_SOLICITUD"] + \
-        seguridad.columnas_individuales(usuario.rol, C.VARIABLES_MODELO)
+    columnas = ["FOLIO", "ID_REAL", "RECIBIDA_MIN", "PD", "NIVEL", "CALIDAD", "SUGERENCIA", "ESTADO_SOLICITUD"] + \
+        seguridad.columnas_individuales(usuario.rol, C.VARIABLES_MODELO) + \
+        (["LOAN_AMOUNT"] if "LOAN_AMOUNT" in cola.columns and
+         seguridad.nivel_acceso(usuario.rol, "LOAN_AMOUNT") == seguridad.INDIVIDUAL else [])
     return cola[columnas], originales
 
 
