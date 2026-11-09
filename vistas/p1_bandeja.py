@@ -91,8 +91,18 @@ else:
                "la información y confirmar: seleccionar no registra una decisión.")
 
     def _semaforo(x):
-        return {"Rechazar": "🔴 Rechazar", "Condicionar": "🟡 Condicionar",
-                "Aprobar": "🟢 Aprobar", "Revisión manual": "⚠ Revisar"}.get(x, "—")
+        return {"Rechazar": "Rechazar", "Condicionar": "Condicionar",
+                "Aprobar": "Aprobar", "Revisión manual": "Revisión manual"}.get(x, "—")
+
+    def _estilo_sugerencia(valor):
+        colores = {
+            "Rechazar": ("#ff9ea8", "rgba(190,48,69,.17)"),
+            "Condicionar": ("#ffd579", "rgba(194,128,17,.17)"),
+            "Aprobar": ("#79e8a4", "rgba(17,139,79,.17)"),
+            "Revisión manual": ("#ffb7a4", "rgba(190,86,44,.15)"),
+        }
+        fg, bg = colores.get(valor, ("inherit", "transparent"))
+        return f"color:{fg};background-color:{bg};font-weight:700;"
 
     tabla = pd.DataFrame({
         "Folio": vista["FOLIO"].astype(str).to_numpy(),
@@ -112,7 +122,8 @@ else:
     # La tabla es interactiva: cada fila ofrece una decisión independiente.
     # El selector es solo un borrador; la ficha exige validación y confirmación.
     editada = st.data_editor(
-        tabla, hide_index=True, key="p1_editor", width="stretch",
+        tabla.style.map(_estilo_sugerencia, subset=["Sugerencia"]),
+        hide_index=True, key="p1_editor", width="stretch",
         height=min(600, 42 * min(len(tabla), 11) + 40),
         disabled=[c for c in tabla.columns if c != "Acción"],
         column_config={
