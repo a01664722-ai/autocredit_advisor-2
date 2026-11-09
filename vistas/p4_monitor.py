@@ -12,13 +12,32 @@ from src.seguridad import enmascarar
 from src.ui import pct
 
 usuario = auth.exigir_acceso("P4")
-ui.cabecera("P4", usuario, extra="Solo métricas y distribuciones agregadas")
-with st.container(border=True):
-    a, b = st.columns([2, 1])
-    a.markdown("**Monitor operativo · control de calidad y riesgo**")
-    b.metric("Campeón experimental SAS (KS)", f"{campeon.KS:.4f}", border=False)
-    st.caption("El monitoreo demostrativo de esta pantalla todavía emplea scoring logístico, "
-               "no el artefacto Gradient Boosting registrado en SAS.")
+# Resultado ejecutivo al inicio: cifras verificadas y umbral, sin inventar una
+# continuidad operativa para el flujo de demostración.
+calidad_inicial = servicios.indicadores_calidad(usuario.rol)
+meta_completitud = 1.0  # objetivo de calidad del equipo, no requisito regulatorio
+st.caption("Control de datos · indicadores iniciales")
+q1, q2, q3, q4 = st.columns(4, gap="small")
+q1.metric("Registros del archivo", f"{calidad_inicial['registros']:,}", border=True)
+q2.metric("Campos críticos completos", f"{calidad_inicial['proporcion_completos']:.2%}",
+          delta=f"{(calidad_inicial['proporcion_completos']-meta_completitud)*100:+.2f} pp vs objetivo",
+          delta_color="normal", border=True,
+          help="Objetivo de integridad del equipo: 100% para este archivo; no es meta de producción.")
+q3.metric("Registros fuera de rango", f"{calidad_inicial['fuera_limite']:,}", border=True,
+          help="Registros que incumplen límites válidos definidos por el equipo.")
+q4.metric("KS del campeón SAS", f"{campeon.KS:.4f}", border=True,
+          help="Métrica de validación histórica de SAS; no corresponde al motor que puntúa la simulación.")
+if calidad_inicial["fuera_limite"] > 0 or calidad_inicial["proporcion_completos"] < meta_completitud:
+    st.error("Calidad de datos fuera de objetivo: revisar los registros con valores "
+             "faltantes o fuera de rango antes de procesar.", icon=":material/warning:")
+else:
+    st.success("La calidad de la base cargada cumple el objetivo de integridad configurado.",
+               icon=":material/check_circle:")
+ui.cabecera("P4", usuario, extra="Monitoreo agregado, con escenarios operativos de demostración")
+st.warning("El flujo por hora, las alertas operativas y las decisiones del monitor son simulaciones*. "
+           "El campeón de SAS no está integrado en el scoring de esta app.",
+           icon=":material/info:")
+
 
 modelo = servicios.modelo()
 
@@ -91,7 +110,7 @@ def monitor() -> None:
         st.badge(f"Última carga {carga:%H:%M} (hace {int(min_sin_carga)} min)", color=color,
                  icon=":material/schedule:")
         st.badge(f"Refresco automático cada {C.REFRESCO_MIN} min", color="gray")
-        st.badge("SIMULADO", color="orange", help=ui.AYUDA_ORIGEN["SIMULADO"])
+        st.badge("Escenario*", color="orange", help=ui.AYUDA_ORIGEN["SIMULADO"])
     if nota_reloj:
         st.caption(nota_reloj)
 

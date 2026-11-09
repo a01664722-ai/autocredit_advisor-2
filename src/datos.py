@@ -40,7 +40,7 @@ def validar_esquema(df: pd.DataFrame) -> list[str]:
 
 def columnas_no_reguladas(df: pd.DataFrame) -> list[str]:
     """Columnas que llegaron y no están en la matriz de datos: se descartan (negar por defecto)."""
-    return [c for c in df.columns if c not in C.COLUMNAS_ESPERADAS]
+    return [c for c in df.columns if c not in C.COLUMNAS_ESPERADAS + ["LOAN_ID", "LOAN_AMOUNT"]]
 
 
 def cortes_terciles(serie: pd.Series) -> tuple[float, float]:

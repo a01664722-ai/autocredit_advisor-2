@@ -9,49 +9,44 @@ from src import almacen, auth, config as C, servicios, ui
 from src.simulacion import texto_hace
 
 usuario = auth.exigir_acceso("P1")
-st.markdown("""
-<style>
-div.st-key-p1_aprobar button {background:#103d25!important;border:2px solid #148d4f!important;
-color:#79f2a9!important;border-radius:12px!important;font-weight:750!important;}
-div.st-key-p1_condicionar button {background:#422f10!important;border:2px solid #a57920!important;
-color:#ffd77a!important;border-radius:12px!important;font-weight:750!important;}
-div.st-key-p1_rechazar button {background:#481d25!important;border:2px solid #b64254!important;
-color:#ff9da6!important;border-radius:12px!important;font-weight:750!important;}
-div.st-key-p1_aprobar button:hover {background:#1a5a35!important;}
-div.st-key-p1_condicionar button:hover {background:#624612!important;}
-div.st-key-p1_rechazar button:hover {background:#68272e!important;}
-</style>""", unsafe_allow_html=True)
-
-ui.cabecera("P1", usuario, extra=f"Solo ves lo asignado a **{usuario.analista_id}**")
-# Notificación de cambios gerenciales en la parte superior del flujo.
 from src.juan_dashboard import avisos_analista
-avisos_analista(usuario)
 
-
+# Primer vistazo: KPI antes del título. Ninguna meta ausente se presenta como cumplida.
 cola, _ = servicios.cola_analista(usuario)
 hoy = date.today().isoformat()
 decididas = almacen.decisiones(fecha=hoy, analista_id=usuario.analista_id)
 
-# --- KPIs ----------------------------------------------------------------------
-k1, k2, k3, k4 = st.columns(4)
-with k1:
-    st.metric("Pendientes", int((cola["ESTADO_SOLICITUD"] == "Pendiente").sum()), border=True,
-              help="Solicitudes asignadas a tu ANALISTA_ID que esperan decisión. SIMULADO.")
-with k2:
-    st.metric("En espera de documento", int((cola["ESTADO_SOLICITUD"] == "En espera de documento").sum()),
-              border=True, help="Pediste un documento porque faltaba un dato clave. SIMULADO.")
-with k3:
-    st.metric("Resueltas hoy", len(decididas), border=True,
-              help="Decisiones que guardaste hoy en la ficha (REAL en bitácora).")
-with k4:
-    if len(decididas):
-        minutos = decididas["duracion_seg"].median() / 60
-        st.metric("Tiempo mediano por decisión", f"{minutos:.1f} min", border=True,
-                  delta=f"meta < {C.META_MINUTOS_DECISION} min", delta_color="off",
-                  help="Desde que abres la ficha hasta que guardas. REAL en bitácora.")
-    else:
-        st.metric("Tiempo mediano por decisión", "—", border=True,
-                  help=f"Aparece al guardar tu primera decisión. Meta: menos de {C.META_MINUTOS_DECISION} min.")
+st.markdown("""
+<style>
+.block-container {padding-top: 1rem !important;}
+div.st-key-p1_editor [data-testid="stDataFrame"] {font-size: .88rem;}
+div.st-key-p1_editor {border-radius: 10px;}
+[data-testid="stAlert"] {border-width: 2px !important;}
+</style>""", unsafe_allow_html=True)
+
+n_pendientes = int(cola["ESTADO_SOLICITUD"].eq("Pendiente").sum())
+n_espera = int(cola["ESTADO_SOLICITUD"].eq("En espera de documento").sum())
+n_resueltas = len(decididas)
+minutos = float(decididas["duracion_seg"].median() / 60) if n_resueltas else None
+
+st.caption("Resumen operativo · mi bandeja*")
+k1, k2, k3, k4 = st.columns(4, gap="small")
+k1.metric("Pendientes*", n_pendientes, border=True, help="Casos asignados y sin resolver; meta de volumen no definida.")
+k2.metric("Documentos pendientes*", n_espera, border=True, help="Casos que requieren documentación adicional.")
+k3.metric("Resueltas hoy", n_resueltas, border=True, help="Decisiones registradas en la bitácora de esta demostración.")
+k4.metric("Tiempo mediano", f"{minutos:.1f} min" if minutos is not None else "—",
+          delta=(f"{minutos - C.META_MINUTOS_DECISION:+.1f} min vs meta" if minutos is not None else None),
+          delta_color="inverse", border=True,
+          help=f"Meta operativa propuesta: {C.META_MINUTOS_DECISION} min. Sin registros se muestra —.")
+if minutos is not None and minutos > C.META_MINUTOS_DECISION:
+    st.error(f"Atención: tiempo mediano {minutos:.1f} min, por encima de la meta propuesta "
+             f"de {C.META_MINUTOS_DECISION} min.", icon=":material/warning:")
+elif n_espera:
+    st.warning(f"{n_espera} solicitudes necesitan seguimiento documental.", icon=":material/report:")
+st.title("P1 · Bandeja de solicitudes")
+st.caption(f"Analista: {usuario.nombre} · Solo casos asignados a {usuario.analista_id} · "
+           "Modelo de PD: regresión logística de demostración, no el campeón de SAS.")
+avisos_analista(usuario)
 
 # --- Filtros (cada uno amarrado a una decisión de Adrián) ----------------------
 def _restablecer():
@@ -66,9 +61,15 @@ with f2:
     niveles = ui.filtro("F2", "p1_f2", widget="pills")
 
 vista = cola[(cola["ESTADO_SOLICITUD"] == estado) & (cola["NIVEL"].isin(niveles or []))]
-vista = vista.sort_values(["PD", "RECIBIDA_MIN"], ascending=[False, False])
-ui.corte_activo(f"Estado = {estado} · Riesgo = {', '.join(niveles) if niveles else 'ninguno'}",
-                len(vista), len(cola), extra="solicitudes asignadas a ti (SIMULADO)",
+orden = st.selectbox("Orden de atención", ["Mayor riesgo primero", "Más antigua primero"],
+                     label_visibility="collapsed", key="p1_orden",
+                     help="El orden representa prioridades de revisión, no autorizaciones automáticas.")
+if orden == "Más antigua primero":
+    vista = vista.sort_values(["RECIBIDA_MIN", "PD"], ascending=[False, False], na_position="last")
+else:
+    vista = vista.sort_values(["PD", "RECIBIDA_MIN"], ascending=[False, False], na_position="last")
+ui.corte_activo(f"Estado: {estado} · Riesgo: {', '.join(niveles) if niveles else 'ninguno'}",
+                len(vista), len(cola), extra="casos asignados*",
                 on_reset=_restablecer, key="p1_reset")
 
 if not niveles:
@@ -85,79 +86,103 @@ elif vista.empty:
                     f"No hay solicitudes «{estado}» con riesgo {', '.join(niveles)}.",
                     [("Restablecer filtros", _restablecer)], key="p1_sin_match")
 else:
-    ui.titulo_grafica("¿Qué solicitud reviso primero?", "SIMULADO", "CALCULADO", "REAL", codigo="G4 · tabla con mini-barra")
-    tabla = pd.DataFrame({
-        "Folio": vista["FOLIO"],
-        "Recibida": vista["RECIBIDA_MIN"].map(texto_hace),
-        "PD": vista["PD"] * 100,
-        "Nivel": vista["NIVEL"],
-        "Datos": vista["CALIDAD"],
-        "Sugerencia del modelo": vista["SUGERENCIA"],
-        "DTI": vista["DEBT_TO_INCOME"].map(lambda v: "falta" if pd.isna(v) else f"{v:.0%}"),
-        "LTV": vista["LOAN_TO_VALUE"].map(lambda v: "falta" if pd.isna(v) else f"{v:.0%}"),
-    })
-    # Acción rápida: prepara la decisión para la ficha; nunca registra sin confirmar.
-    prioridad = vista.iloc[0]
-    with st.container(border=True):
-        st.markdown("**Siguiente solicitud prioritaria** · información para decidir")
-        z1, z2, z3, z4 = st.columns(4, gap="small")
-        z1.metric("Folio (simulado)", str(prioridad["FOLIO"]), border=False)
-        z2.metric("Riesgo estimado (logit demo)", f'{prioridad["PD"]:.1%}', border=False,
-                  help="Predicción del modelo logístico de demostración, NO del campeón SAS.")
-        z3.metric("Deuda / ingreso", f'{prioridad["DEBT_TO_INCOME"]:.1%}' if pd.notna(prioridad["DEBT_TO_INCOME"]) else "Sin dato", border=False)
-        z4.metric("Calidad", str(prioridad["CALIDAD"]), border=False)
-        if prioridad["CALIDAD"] != "Completo" or prioridad["NIVEL"] == "Alto":
-            st.warning("Atención: riesgo elevado o datos por revisar. La ficha verificará los bloqueos antes del registro.",
-                       icon=":material/warning:")
-        st.caption("Estos botones solo preparan la decisión; después se confirma y registra en la ficha del caso.")
-        b_ap, b_co, b_re, b_det = st.columns([1, 1, 1, 1.2], gap="small")
-        acciones = [
-            (b_ap, "Aprobar", "p1_aprobar"),
-            (b_co, "Condicionar", "p1_condicionar"),
-            (b_re, "Rechazar", "p1_rechazar"),
-        ]
-        for columna, accion, clave_btn in acciones:
-            with columna:
-                if st.button(accion, key=clave_btn, use_container_width=True):
-                    st.session_state["folio_actual"] = prioridad["FOLIO"]
-                    st.session_state[f'dec_{prioridad["FOLIO"]}'] = accion
-                    st.switch_page("vistas/p2_ficha.py")
-        with b_det:
-            if st.button("Ver detalles", key="p1_detalle", use_container_width=True):
-                st.session_state["folio_actual"] = prioridad["FOLIO"]
-                st.switch_page("vistas/p2_ficha.py")
+    st.markdown("**Solicitudes y decisión rápida**")
+    st.caption(f"Semáforo de PD**: verde < {C.LIMITE_RIESGO_BAJO:.0%}, "
+               f"ámbar {C.LIMITE_RIESGO_BAJO:.0%}–{C.CORTE_PD:.0%}, "
+               f"rojo ≥ {C.CORTE_PD:.0%} (cortes propuestos). "
+               "Elige una acción en cada fila; la ficha exige confirmar antes de registrar.")
 
-    seleccion = st.dataframe(
-        tabla, hide_index=True, on_select="rerun", selection_mode="single-row", key="p1_tabla",
+    def _semaforo(x):
+        return {"Rechazar": "Rechazar", "Condicionar": "Condicionar",
+                "Aprobar": "Aprobar", "Revisión manual": "Revisión manual"}.get(x, "—")
+
+    def _estilo_sugerencia(valor):
+        colores = {
+            "Rechazar": ("#ff9ea8", "rgba(190,48,69,.17)"),
+            "Condicionar": ("#ffd579", "rgba(194,128,17,.17)"),
+            "Aprobar": ("#79e8a4", "rgba(17,139,79,.17)"),
+            "Revisión manual": ("#ffb7a4", "rgba(190,86,44,.15)"),
+        }
+        fg, bg = colores.get(valor, ("inherit", "transparent"))
+        return f"color:{fg};background-color:{bg};font-weight:700;"
+
+    def _estilo_pd(valor):
+        try:
+            pd_valor = float(str(valor).replace("%", "")) / 100
+        except (TypeError, ValueError):
+            return "color:#adb5bd;"
+        if pd_valor >= C.CORTE_PD:
+            return "color:#ff8997;background-color:rgba(187,42,65,.15);font-weight:700;"
+        if pd_valor >= C.LIMITE_RIESGO_BAJO:
+            return "color:#f3c36e;background-color:rgba(170,118,11,.12);font-weight:650;"
+        return "color:#73dda1;background-color:rgba(18,130,76,.12);font-weight:650;"
+
+    tabla = pd.DataFrame({
+        "Folio": vista["FOLIO"].astype(str).to_numpy(),
+        "Recibida*": vista["RECIBIDA_MIN"].map(texto_hace).to_numpy(),
+        "PD**": vista["PD"].map(lambda v: "—" if pd.isna(v) else f"{v:.1%}").to_numpy(),
+        "Riesgo": vista["NIVEL"].to_numpy(),
+        "Calidad": vista["CALIDAD"].to_numpy(),
+        "Sugerencia": vista["SUGERENCIA"].map(_semaforo).to_numpy(),
+        "DTI": vista["DEBT_TO_INCOME"].map(lambda v: "—" if pd.isna(v) else f"{v:.0%}").to_numpy(),
+        "LTV": vista["LOAN_TO_VALUE"].map(lambda v: "—" if pd.isna(v) else f"{v:.0%}").to_numpy(),
+        "Acción": ["Seleccionar…"] * len(vista),
+    })
+    id_real = bool(vista["ID_REAL"].all()) if "ID_REAL" in vista else False
+    tabla.rename(columns={"Folio": "Loan ID" if id_real else "Folio*"}, inplace=True)
+    id_col = "Loan ID" if id_real else "Folio*"
+
+    # La acción debe estar junto al identificador: nunca escondida al final
+    # de una tabla con desplazamiento horizontal.
+    tabla = tabla[[id_col, "Acción", "PD**", "Sugerencia", "Riesgo",
+                   "Calidad", "Recibida*", "DTI", "LTV"]]
+
+    # La tabla es interactiva: cada fila ofrece una decisión independiente.
+    # El selector es solo un borrador; la ficha exige validación y confirmación.
+    editada = st.data_editor(
+        tabla.style.map(_estilo_sugerencia, subset=["Sugerencia"])
+                   .map(_estilo_pd, subset=["PD**"]),
+        hide_index=True, key="p1_editor", width="stretch",
+        height=min(600, 42 * min(len(tabla), 11) + 40),
+        disabled=[c for c in tabla.columns if c != "Acción"],
         column_config={
-            "Folio": st.column_config.TextColumn("Folio (SIMULADO)", help="Completo porque es tu caso (matriz F)."),
-            "Recibida": st.column_config.TextColumn("Recibida (SIMULADO)"),
-            "PD": st.column_config.ProgressColumn("PD (CALCULADO)", format="%.1f%%", min_value=0,
-                                                  max_value=C.ESCALA_PD_MAX * 100),
-            "Datos": st.column_config.TextColumn("Calidad de datos", help="Incompleto o Fuera de rango abren un "
-                                                 "estado de excepción en la ficha."),
-            "DTI": st.column_config.TextColumn("DTI (REAL)"),
-            "LTV": st.column_config.TextColumn("LTV (REAL)"),
+            id_col: st.column_config.TextColumn(id_col, width="medium"),
+            "Recibida*": st.column_config.TextColumn("Recibida*", width="small"),
+            "PD**": st.column_config.TextColumn("PD** · Logit", width="small",
+                                                 help="Rojo: sobre el corte de revisión; ámbar: intermedio; verde: bajo."),
+            "Riesgo": st.column_config.TextColumn("Riesgo", width="small"),
+            "Sugerencia": st.column_config.TextColumn("Sugerencia", width="medium"),
+            "DTI": st.column_config.TextColumn("DTI", width="small"),
+            "LTV": st.column_config.TextColumn("LTV", width="small"),
+            "Acción": st.column_config.SelectboxColumn(
+                "Decisión rápida", options=["Seleccionar…", "Aprobar", "Condicionar",
+                                            "Rechazar", "Ver detalle"], required=True, width="medium"),
         },
     )
-    filas = seleccion.selection.rows if seleccion else []
-    if filas:
-        st.session_state["folio_actual"] = tabla.iloc[filas[0]]["Folio"]
-        st.switch_page("vistas/p2_ficha.py")
-
-    def _abrir_primera():
-        st.session_state["folio_actual"] = tabla.iloc[0]["Folio"]
-
-    with st.container(horizontal=True, vertical_alignment="center"):
-        if st.button(f"Abrir la de mayor prioridad ({tabla.iloc[0]['Folio']})", type="primary",
-                     icon=":material/arrow_forward:", on_click=_abrir_primera):
+    for pos, fila_editada in editada.iterrows():
+        accion = fila_editada["Acción"]
+        if accion != "Seleccionar…":
+            elegido = str(fila_editada[id_col])
+            st.session_state["folio_actual"] = elegido
+            if accion != "Ver detalle":
+                st.session_state[f"dec_{elegido}"] = accion
             st.switch_page("vistas/p2_ficha.py")
-        st.caption("o selecciona una fila para abrir su ficha.")
 
-st.caption(
-    f"Orden por defecto: PD de mayor a menor; en empate, la más antigua primero. Solo aparecen las solicitudes "
-    f"asignadas a tu ANALISTA_ID (filtro en el servidor). Nivel de riesgo: Bajo < {C.LIMITE_RIESGO_BAJO:.0%} ≤ "
-    f"Medio < {C.CORTE_PD:.0%} (corte) ≤ Alto. Barra = PD en escala 0–{C.ESCALA_PD_MAX:.0%}."
-)
-ui.pie_origen("Las variables de cada solicitud son filas REAL del 25% de la base que el modelo no vio al entrenar; "
-              "folio, hora y los tres casos con dato faltante o fuera de rango son SIMULADOS.")
+    fuera = vista[(vista["NIVEL"] == "Alto") | (vista["CALIDAD"] != "Completo")]
+    if len(fuera):
+        with st.expander(f"Casos que requieren atención ({len(fuera)})"):
+            st.warning("Se priorizan los casos de riesgo alto o datos incompletos. "
+                       "Una recomendación del modelo nunca sustituye la verificación de documentos.",
+                       icon=":material/warning:")
+            st.dataframe(fuera[["FOLIO", "NIVEL", "CALIDAD", "SUGERENCIA"]]
+                         .rename(columns={"FOLIO": id_col, "NIVEL": "Riesgo",
+                                          "CALIDAD": "Calidad", "SUGERENCIA": "Sugerencia"}),
+                         hide_index=True, width="stretch")
+
+    st.caption("Fuente y notación: * dato operativo simulado (folio, fecha de recepción y asignación); "
+               "** probabilidad calculada por la regresión logística demostrativa. "
+               "Los valores DTI y LTV proceden de registros históricos; las excepciones se simulan. "
+               "El identificador es real exclusivamente cuando figura como Loan ID en el CSV fuente.")
+
+st.caption("Orden ajustable: riesgo mayor o recepción más antigua. "
+           "Algunas solicitudes son demostrativas; ninguna aprobación se registra desde la tabla.")

@@ -32,9 +32,13 @@ def estilos() -> None:
     st.markdown(
         """
         <style>
-        .block-container {padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1400px;}
-        [data-testid="stMetricValue"] {font-size: 1.9rem;}
-        [data-testid="stCaptionContainer"] p {line-height: 1.35;}
+        .block-container {padding-top: 1.05rem; padding-bottom: 2.5rem; max-width: 1450px;}
+        h1 {font-size: clamp(1.6rem, 2vw, 2.15rem) !important; line-height: 1.2 !important;}
+        h2 {font-size: 1.35rem !important;}
+        [data-testid="stMetricValue"] {font-size: clamp(1.35rem, 2vw, 1.85rem) !important;}
+        [data-testid="stMetricLabel"] {font-size: .87rem !important;}
+        [data-testid="stCaptionContainer"] p {line-height: 1.32;}
+        [data-testid="stAlert"] {border-left-width: 5px !important;}
         </style>
         """,
         unsafe_allow_html=True,
@@ -44,7 +48,7 @@ def estilos() -> None:
 def origen(*etiquetas: str) -> None:
     with st.container(horizontal=True, gap="small"):
         for e in etiquetas:
-            st.badge(e, color=COLOR_ORIGEN.get(e, "gray"), help=AYUDA_ORIGEN.get(e))
+            st.badge("Simulado*" if e == "SIMULADO" else e.capitalize(), color=COLOR_ORIGEN.get(e, "gray"), help=AYUDA_ORIGEN.get(e))
 
 
 def cabecera(pantalla: str, usuario, extra: str | None = None) -> None:
@@ -62,7 +66,7 @@ def titulo_grafica(pregunta: str, *origenes: str, codigo: str | None = None) -> 
         st.markdown(f"**{pregunta}**" + (f"  \n:gray[{codigo}]" if codigo else ""))
         st.space("stretch")
         for e in origenes:
-            st.badge(e, color=COLOR_ORIGEN.get(e, "gray"), help=AYUDA_ORIGEN.get(e))
+            st.badge("Simulado*" if e == "SIMULADO" else e.capitalize(), color=COLOR_ORIGEN.get(e, "gray"), help=AYUDA_ORIGEN.get(e))
 
 
 def amarre(fid_o_cid: str) -> str:
@@ -143,8 +147,11 @@ def ver_tabla(df: pd.DataFrame, etiqueta: str = "Ver como tabla", **kw) -> None:
 
 def pie_origen(texto_extra: str = "") -> None:
     st.caption(
-        "Rótulos de origen → **REAL**: columna de la base · **CALCULADO**: derivado de la base o del modelo · "
-        "**SIMULADO**: dato propuesto que aún no existe · **POLÍTICA**: umbral del equipo. " + texto_extra
+        "Origen de datos: Real = columna del CSV; calculado = indicador o predicción derivada; "
+        "política = umbral del equipo. Nota: * indica dato simulado o propio del equipo "
+        "(folio generado, recepción, asignación y escenarios), no un registro operativo real. "
+        "** indica PD calculada por el modelo logístico demostrativo, no por el campeón SAS. "
+        + texto_extra
     )
 
 

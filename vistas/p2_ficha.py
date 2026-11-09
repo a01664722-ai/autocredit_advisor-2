@@ -14,7 +14,6 @@ from src.simulacion import texto_hace
 usuario = auth.exigir_acceso("P2")
 modelo = servicios.modelo()
 cola, originales = servicios.cola_analista(usuario)
-ui.cabecera("P2", usuario)
 # Notificación de cambios gerenciales en la parte superior del flujo.
 from src.juan_dashboard import avisos_analista
 avisos_analista(usuario)
@@ -47,14 +46,6 @@ ev = evaluar(modelo, fila)
 estado = registro["ESTADO_SOLICITUD"]
 st.session_state.setdefault(f"inicio_{folio}", time.time())
 
-# --- Encabezado de la solicitud --------------------------------------------------
-with st.container(horizontal=True, vertical_alignment="center"):
-    if st.button("Bandeja", icon=":material/arrow_back:", on_click=_ir_bandeja, type="tertiary"):
-        st.switch_page("vistas/p1_bandeja.py")
-    st.markdown(f"### Solicitud {folio}")
-    st.badge(f"recibida {texto_hace(registro['RECIBIDA_MIN'])} · SIMULADO", color="orange")
-    st.badge(estado, color={"Pendiente": "blue", "En espera de documento": "orange"}.get(estado, "green"))
-
 if st.session_state.pop("aviso_regreso", False):
     st.info("Regresaste a la solicitud que tenías abierta cuando expiró la sesión; lo que habías capturado "
             "está abajo.", icon=":material/history:")
@@ -72,6 +63,47 @@ def _llego_documento():
 
 
 demo = not auth.modo_oidc()
+
+# Primero resultados clave y referencias del mismo tipo, antes del título.
+dti_actual = fila.get("DEBT_TO_INCOME")
+dti_medio = float(modelo.entrenamiento["DEBT_TO_INCOME"].mean())
+dti_dif = (float(dti_actual) - dti_medio)*100 if pd.notna(dti_actual) else None
+st.caption("Evaluación individual · indicadores principales")
+a, b, c, d = st.columns(4, gap="small")
+a.metric("Probabilidad de incumplimiento**",
+         f"{ev.pd:.1%}" if ev.pd is not None else "—", border=True,
+         help="Logit de demostración; NO corresponde al campeón Gradient Boosting de SAS.")
+b.metric("Referencia histórica", f"{modelo.tasa_base:.2%}", border=True,
+         help="Tasa histórica observada, no meta de aprobación ni probabilidad individual.")
+c.metric("Deuda / ingreso", f"{dti_actual:.1%}" if pd.notna(dti_actual) else "—",
+         delta=f"{dti_dif:+.1f} pp vs media" if dti_dif is not None else None,
+         delta_color="inverse", border=True,
+         help=f"DTI medio de entrenamiento: {dti_medio:.1%}. Comparación descriptiva.")
+d.metric("Corte de revisión", f"{C.CORTE_PD:.0%}", border=True,
+         help="Umbral propuesto de evaluación; no implica aprobación automática.")
+
+if ev.pd is not None and ev.pd >= C.CORTE_PD:
+    st.error(f"Revisión prioritaria: PD {ev.pd:.1%}, "
+             f"{(ev.pd-C.CORTE_PD)*100:.1f} pp sobre el corte propuesto. "
+             "Verifica la información antes de decidir.", icon=":material/warning:")
+elif ev.pd is not None:
+    st.success("PD inferior al corte de revisión. Aun así, la decisión exige "
+               "validar el expediente.", icon=":material/check_circle:")
+else:
+    st.error("No se puede calcular una PD válida para esta solicitud: revisar datos antes "
+             "de emitir una autorización.", icon=":material/error:")
+
+id_real = bool(registro.get("ID_REAL", False))
+st.title("P2 · Ficha de solicitud")
+st.markdown(f"**Solicitud {folio}" + ("" if id_real else "*") + "**")
+st.caption("Folio* y recepción* son datos operativos simulados; los atributos crediticios "
+           "proceden de la base histórica. ** PD calculada con logit de demostración.")
+with st.container(horizontal=True, vertical_alignment="center"):
+    if st.button("Volver a la bandeja", icon=":material/arrow_back:", on_click=_ir_bandeja,
+                 type="tertiary"):
+        st.switch_page("vistas/p1_bandeja.py")
+    st.badge(f"Recibida* {texto_hace(registro['RECIBIDA_MIN'])}", color="orange")
+    st.badge(estado, color={"Pendiente": "blue", "En espera de documento": "orange"}.get(estado, "green"))
 
 # --- Estados de excepción dentro del flujo de análisis ---------------------------
 if ev.invalidos:
@@ -110,24 +142,9 @@ if estado == "En espera de documento":
 if ev.pd is None:
     st.stop()
 
-# --- Resumen y acciones visibles sin desplazamiento ----------------------------
+# El botón prepara la decisión; el registro se hace en la confirmación.
 with st.container(border=True):
-    st.markdown("**Decisión crediticia · Solicitud en revisión**")
-    a, b, c, d = st.columns(4, gap="small")
-    a.metric("Riesgo calculado (logit demo)", f"{ev.pd:.1%}", border=False,
-             help="PD del modelo logístico de demostración, no del campeón Gradient Boosting SAS.")
-    b.metric("Referencia cartera", f"{modelo.tasa_base:.2%}", border=False)
-    dti_actual = fila.get("DEBT_TO_INCOME")
-    c.metric("Deuda / ingreso", f"{dti_actual:.1%}" if pd.notna(dti_actual) else "Sin dato",
-             border=False)
-    d.metric("Corte propuesto", f"{C.CORTE_PD:.0%}", border=False)
-    dist = (ev.pd - C.CORTE_PD)*100
-    st.caption(f"Diferencia frente al corte: {dist:+.1f} puntos porcentuales. "
-               "Corte de política del equipo, sujeto a calibración; no es autorización automática.")
-    if ev.bloquea_aprobar or estado == "En espera de documento" or ev.fuera_rango:
-        st.error("Revisión obligatoria: datos incompletos, inválidos, en espera o fuera de rango. "
-                 "No autorizar sin verificar documentación.", icon=":material/warning:")
-    st.markdown("**Elegir rápidamente una decisión**")
+    st.markdown("**Acción rápida** · confirma abajo antes de guardar")
     st.markdown("""
     <style>
     div.st-key-p2_aprobar button {background:#103d25!important;color:#72f3a8!important;
@@ -152,8 +169,8 @@ with st.container(border=True):
                          ):
                 st.session_state[k_rapida] = etiqueta
                 st.rerun()
-    st.caption("Selecciona una acción y confirma en el formulario siguiente: "
-               "no se guarda ningún dictamen al pulsar el botón.")
+    st.caption("Aprobar, condicionar y rechazar son borradores hasta que confirmes. "
+               "No se registra nada con estos botones.")
 
 # --- Decisión ------------------------------------------------------------------
 clave = f"{folio}"
@@ -187,7 +204,7 @@ if estado == "Resuelta hoy":
     st.stop()
 
 with st.container(border=True):
-    st.markdown("#### Tu decisión")
+    st.markdown("#### Confirmar dictamen")
     bloqueado = ev.bloquea_aprobar or estado == "En espera de documento"
     opciones = ["Rechazar"] if bloqueado else C.DECISIONES
     if bloqueado:
@@ -281,13 +298,13 @@ c1, c2 = st.columns(2, gap="medium")
 with c1, st.container(border=True):
     ui.titulo_grafica("¿Está arriba o abajo del corte?", "CALCULADO", "POLÍTICA", codigo="G1 · barra con corte")
     veredicto = {
-        "Aprobar": ("El modelo sugiere APROBAR", "green", ":material/check:"),
-        "Condicionar": (f"El modelo sugiere CONDICIONAR: enganche ≥ {ev.enganche_requerido:.1%}" if ev.enganche_requerido else "", "orange", ":material/tune:"),
-        "Rechazar": ("El modelo sugiere RECHAZAR: ni con 31% de enganche baja del corte", "red", ":material/close:"),
+        "Aprobar": ("Sugerencia del modelo: aprobar", "green", ":material/check:"),
+        "Condicionar": (f"Sugerencia del modelo: condicionar: enganche ≥ {ev.enganche_requerido:.1%}" if ev.enganche_requerido else "", "orange", ":material/tune:"),
+        "Rechazar": ("Sugerencia del modelo: rechazar: ni con 31% de enganche baja del corte", "red", ":material/close:"),
         "Revisión manual": ("Sin recomendación: dato fuera de rango", "gray", ":material/help:"),
     }[ev.sugerencia]
     with st.container(horizontal=True, vertical_alignment="center"):
-        st.markdown(f"## PD {ev.pd:.1%}")
+        st.markdown(f"### Riesgo estimado: {ev.pd:.1%}")
         st.badge(veredicto[0], color=veredicto[1], icon=veredicto[2])
     G.mostrar(G.g1_barra_corte(ev.pd, C.CORTE_PD, modelo.tasa_base), key="g1")
     distancia = (ev.pd - C.CORTE_PD) * 100
@@ -317,7 +334,7 @@ with c4, st.container(border=True):
                   + (" · FUERA DE RANGO" if v in ev.fuera_rango else "") for v in modelo.variables],
         "Típico buen pagador": [datos.formatear(v, modelo.mediana_buenos[v]) for v in modelo.variables],
     })
-    st.dataframe(exp, hide_index=True, height=388)
+    st.dataframe(exp, hide_index=True, height=310)
     ocultos = [f["dato"] for f in MATRIZ_DATOS if f["analista"] == OCULTO and f["grupo"] != "Calculado"]
     st.caption("Ocultos por política (no cambian la decisión o filtrarían el resultado): " + ", ".join(ocultos) + ".")
 

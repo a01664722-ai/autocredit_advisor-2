@@ -58,6 +58,13 @@ def entrenar(df: pd.DataFrame, variables: list[str] | None = None,
     holdout = X_ho.copy()
     holdout[C.OBJETIVO] = y_ho.to_numpy()
     holdout["PD"] = pipe.predict_proba(_transformar(X_ho))[:, 1]
+    # Conserva identificador y monto para mostrar, sin integrarlos al scoring actual.
+    if "LOAN_ID" in df.columns:
+        ids = df.loc[X_ho.index, "LOAN_ID"].astype("string")
+        if ids.notna().all() and ids.is_unique:
+            holdout["LOAN_ID"] = ids.to_numpy()
+    if "LOAN_AMOUNT" in df.columns:
+        holdout["LOAN_AMOUNT"] = df.loc[X_ho.index, "LOAN_AMOUNT"].to_numpy()
 
     modelo = ModeloPD(
         pipeline=pipe, variables=variables,

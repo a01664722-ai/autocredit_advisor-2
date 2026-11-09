@@ -116,6 +116,8 @@ _dato("REVOLVING_UTILIZATION", _G1, "REAL", "Crediticio", INDIVIDUAL, AGREGADO, 
 _dato("DEBT_TO_INCOME", _G1, "REAL", "Financiero", INDIVIDUAL, AGREGADO, AGREGADO, "Drift diario (PSI)")
 _dato("PAYMENT_TO_INCOME", _G1, "REAL", "Financiero", INDIVIDUAL, AGREGADO, AGREGADO, "Drift diario (PSI)")
 _dato("LOAN_TO_VALUE", _G1, "REAL", "Financiero", INDIVIDUAL, AGREGADO, AGREGADO, "Drift diario (PSI)")
+_dato("LOAN_AMOUNT", _G1, "REAL si se carga", "Financiero / monto del préstamo",
+      INDIVIDUAL, AGREGADO, AGREGADO, "Opcional: no consta en CSV reducido actualmente desplegado")
 _dato("DOWN_PAYMENT_PCT", _G1, "REAL", "Financiero", INDIVIDUAL, AGREGADO, AGREGADO)
 _dato("SAVINGS_BALANCE", _G1, "REAL", "Financiero (saldo bancario)", INDIVIDUAL, AGREGADO, AGREGADO,
       "Mariana ve medianas por segmento; Luis, distribución")
@@ -138,8 +140,9 @@ _dato("PSI y calibración", _G2, "CALCULADO", "Métrica del sistema", OCULTO, OC
 
 # 3) Columnas operativas PROPUESTAS (hoy SIMULADO)
 _G3 = "Propuesta operativa"
-_dato("LOAN_ID / FOLIO", _G3, "SIMULADO", "Identificador", INDIVIDUAL, OCULTO, ENMASCARADO,
-      "Adrián: completo, solo sus casos")
+_dato("LOAN_ID / FOLIO", _G3, "REAL si existe; de otro modo SIMULADO",
+      "Identificador", INDIVIDUAL, OCULTO, ENMASCARADO,
+      "ID auténtico solo si LOAN_ID está en el CSV; de lo contrario Folio*")
 _dato("ANALISTA_ID", _G3, "SIMULADO", "Identificador interno", INDIVIDUAL, AGREGADO, OCULTO,
       "Filtro en servidor: cada analista recibe solo lo suyo")
 _dato("FECHA_SOLICITUD", _G3, "SIMULADO", "Operativo", INDIVIDUAL, AGREGADO, AGREGADO)

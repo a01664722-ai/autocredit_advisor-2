@@ -55,14 +55,15 @@ ETIQUETAS = {
     "YEARS_CREDIT_HISTORY": "Años de historial crediticio",
     "BANKRUPTCY_FLAG": "Antecedente de bancarrota",
     "FINANCIAL_LITERACY_SCORE": "Score de educación financiera",
-    "DEFAULT": "Incumplimiento (DEFAULT)",
+    "DEFAULT": "Incumplimiento",
+    "LOAN_AMOUNT": "Monto solicitado",
 }
 FORMATO = {  # pct | int | dinero | bandera | num
     "REVOLVING_UTILIZATION": "pct", "DEBT_TO_INCOME": "pct",
     "PAYMENT_TO_INCOME": "pct", "LOAN_TO_VALUE": "pct", "DOWN_PAYMENT_PCT": "pct",
     "SAVINGS_BALANCE": "dinero", "MISSED_PAYMENTS_12M": "int", "DELINQ_90": "int",
     "YEARS_CREDIT_HISTORY": "int", "BANKRUPTCY_FLAG": "bandera",
-    "FINANCIAL_LITERACY_SCORE": "num",
+    "FINANCIAL_LITERACY_SCORE": "num", "LOAN_AMOUNT": "dinero",
 }
 # Variables cuyo faltante bloquea "Aprobar" (sin ellas la PD no es confiable).
 VARIABLES_CLAVE = ["DEBT_TO_INCOME", "PAYMENT_TO_INCOME", "LOAN_TO_VALUE",
