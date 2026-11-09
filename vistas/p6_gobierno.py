@@ -41,8 +41,11 @@ with tab_dato:
 
     orden = ["Dato"] + personas + ["Tratamiento", "Origen", "Sensibilidad", "Nota"]
     vista = vista[orden].set_index("Dato")
-    # st.table muestra la matriz completa, sin scroll ni columnas ocultas.
-    st.table(vista.style.map(_color, subset=personas))
+    # Mantener todo consultable, pero sin convertir la página en una tabla interminable.
+    st.dataframe(vista.style.map(_color, subset=personas),
+                 height=475, width="stretch")
+    st.caption("La matriz se desplaza dentro de la tabla para mantener visibles los controles "
+               "de navegación y la explicación del tratamiento.")
     conteo = matriz[personas].apply(pd.Series.value_counts).fillna(0).astype(int)
     conteo.columns = ["Adrián", "Mariana", "Luis"]
     c1, c2 = st.columns([1.3, 1])
