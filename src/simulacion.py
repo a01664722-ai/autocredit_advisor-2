@@ -65,8 +65,14 @@ def cola_base(modelo: ModeloPD, analista_id: str, n: int = 25) -> tuple[pd.DataF
     pool = hold.index[(np.arange(len(hold)) % (len(ANALISTAS) + 1)) == k]
     rng = np.random.default_rng(_semilla("cola", analista_id))
     elegidos = rng.choice(pool, n, replace=False)
-    cola = hold.loc[elegidos, modelo.variables].copy()
-    cola.insert(0, "FOLIO", [folio_de(i) for i in elegidos])
+    extras = [c for c in ("LOAN_ID", "LOAN_AMOUNT") if c in hold.columns]
+    cola = hold.loc[elegidos, modelo.variables + extras].copy()
+    id_real = "LOAN_ID" in cola.columns
+    # Real solo si la fuente aporta LOAN_ID validado; si no, Folio*.
+    ids = cola["LOAN_ID"].astype(str).tolist() if id_real else [folio_de(i) for i in elegidos]
+    cola.insert(0, "FOLIO", ids)
+    cola["ID_REAL"] = id_real
+    cola.drop(columns=["LOAN_ID"], inplace=True, errors="ignore")
     cola["RECIBIDA_MIN"] = rng.integers(8, 330, n)
     cola["ANALISTA_ID"] = analista_id
     cola = cola.reset_index(drop=True)
