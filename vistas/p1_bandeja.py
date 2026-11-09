@@ -87,8 +87,10 @@ elif vista.empty:
                     [("Restablecer filtros", _restablecer)], key="p1_sin_match")
 else:
     st.markdown("**Solicitudes y decisión rápida**")
-    st.caption("Selecciona una acción directamente en la fila. Se abrirá la ficha para validar "
-               "la información y confirmar: seleccionar no registra una decisión.")
+    st.caption(f"Semáforo de PD**: verde < {C.LIMITE_RIESGO_BAJO:.0%}, "
+               f"ámbar {C.LIMITE_RIESGO_BAJO:.0%}–{C.CORTE_PD:.0%}, "
+               f"rojo ≥ {C.CORTE_PD:.0%} (cortes propuestos). "
+               "Elige una acción en cada fila; la ficha exige confirmar antes de registrar.")
 
     def _semaforo(x):
         return {"Rechazar": "Rechazar", "Condicionar": "Condicionar",
@@ -104,10 +106,21 @@ else:
         fg, bg = colores.get(valor, ("inherit", "transparent"))
         return f"color:{fg};background-color:{bg};font-weight:700;"
 
+    def _estilo_pd(valor):
+        try:
+            pd_valor = float(str(valor).replace("%", "")) / 100
+        except (TypeError, ValueError):
+            return "color:#adb5bd;"
+        if pd_valor >= C.CORTE_PD:
+            return "color:#ff8997;background-color:rgba(187,42,65,.15);font-weight:700;"
+        if pd_valor >= C.LIMITE_RIESGO_BAJO:
+            return "color:#f3c36e;background-color:rgba(170,118,11,.12);font-weight:650;"
+        return "color:#73dda1;background-color:rgba(18,130,76,.12);font-weight:650;"
+
     tabla = pd.DataFrame({
         "Folio": vista["FOLIO"].astype(str).to_numpy(),
         "Recibida*": vista["RECIBIDA_MIN"].map(texto_hace).to_numpy(),
-        "PD**": (vista["PD"] * 100).to_numpy(),
+        "PD**": vista["PD"].map(lambda v: "—" if pd.isna(v) else f"{v:.1%}").to_numpy(),
         "Riesgo": vista["NIVEL"].to_numpy(),
         "Calidad": vista["CALIDAD"].to_numpy(),
         "Sugerencia": vista["SUGERENCIA"].map(_semaforo).to_numpy(),
@@ -122,15 +135,16 @@ else:
     # La tabla es interactiva: cada fila ofrece una decisión independiente.
     # El selector es solo un borrador; la ficha exige validación y confirmación.
     editada = st.data_editor(
-        tabla.style.map(_estilo_sugerencia, subset=["Sugerencia"]),
+        tabla.style.map(_estilo_sugerencia, subset=["Sugerencia"])
+                   .map(_estilo_pd, subset=["PD**"]),
         hide_index=True, key="p1_editor", width="stretch",
         height=min(600, 42 * min(len(tabla), 11) + 40),
         disabled=[c for c in tabla.columns if c != "Acción"],
         column_config={
             id_col: st.column_config.TextColumn(id_col, width="medium"),
             "Recibida*": st.column_config.TextColumn("Recibida*", width="small"),
-            "PD**": st.column_config.ProgressColumn("PD** · Logit", format="%.1f%%",
-                                                     min_value=0, max_value=100, width="medium"),
+            "PD**": st.column_config.TextColumn("PD** · Logit", width="small",
+                                                 help="Rojo: sobre el corte de revisión; ámbar: intermedio; verde: bajo."),
             "Riesgo": st.column_config.TextColumn("Riesgo", width="small"),
             "Sugerencia": st.column_config.TextColumn("Sugerencia", width="medium"),
             "DTI": st.column_config.TextColumn("DTI", width="small"),
