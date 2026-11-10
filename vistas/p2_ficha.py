@@ -142,6 +142,70 @@ if estado == "En espera de documento":
 if ev.pd is None:
     st.stop()
 
+# --- Christelle: tres tarjetas de decisión ligadas a reglas justificadas ------
+# Son recomendaciones del motor logístico demostrativo; no crean dictámenes.
+datos_validos = (
+    ev.pd is not None
+    and not ev.bloquea_aprobar
+    and not ev.fuera_rango
+    and not ev.invalidos
+    and estado == "Pendiente"
+)
+puede_condicionar = (
+    ev.enganche_requerido is not None
+    and ev.pd_condicionada is not None
+    and ev.pd_condicionada < C.CORTE_PD
+)
+tarjetas_christelle = [
+    {
+        "nombre": "Aprobar",
+        "nivel": "Riesgo por debajo del corte",
+        "regla": f"PD menor a {C.CORTE_PD:.0%} y datos críticos completos.",
+        "justificacion": "Evita aceptar expedientes con información insuficiente.",
+        "aplica": datos_validos and ev.sugerencia == "Aprobar",
+        "color": "green",
+    },
+    {
+        "nombre": "Condicionar",
+        "nivel": "Riesgo mitigable",
+        "regla": f"PD desde {C.CORTE_PD:.0%} que cae por debajo del corte tras ajustar el enganche.",
+        "justificacion": (
+            f"Enganche propuesto: {ev.enganche_requerido:.1%}; "
+            f"PD estimada: {ev.pd_condicionada:.1%}."
+            if puede_condicionar else
+            "No se identificó un escenario válido que reduzca la PD bajo el corte."
+        ),
+        "aplica": datos_validos and ev.sugerencia == "Condicionar" and puede_condicionar,
+        "color": "orange",
+    },
+    {
+        "nombre": "Rechazar",
+        "nivel": "Riesgo sin mitigación suficiente",
+        "regla": f"PD desde {C.CORTE_PD:.0%} sin un enganche que reduzca el riesgo bajo el corte.",
+        "justificacion": "Debe registrarse el motivo; la recomendación no sustituye al analista.",
+        "aplica": datos_validos and ev.sugerencia == "Rechazar" and not puede_condicionar,
+        "color": "red",
+    },
+]
+st.markdown("#### Tres escenarios de decisión")
+st.caption("Reglas propuestas por el equipo, basadas en PD del logit de demostración; "
+           "no son políticas regulatorias ni predicciones del campeón de SAS.")
+for columna, tarjeta in zip(st.columns(3, gap="small"), tarjetas_christelle):
+    with columna:
+        with st.container(border=True):
+            st.markdown(f"**{tarjeta['nombre']}**")
+            st.badge("Sugerencia aplicable" if tarjeta["aplica"] else "No sugerido",
+                     color=tarjeta["color"] if tarjeta["aplica"] else "gray")
+            st.caption(tarjeta["nivel"])
+            st.write(tarjeta["regla"])
+            st.caption(tarjeta["justificacion"])
+if not any(tarjeta["aplica"] for tarjeta in tarjetas_christelle):
+    st.warning("Ninguna regla automática es aplicable a este expediente: "
+               "revisa documentación, condiciones y motivos antes de decidir.",
+               icon=":material/warning:")
+st.caption("Las tarjetas no aprueban ni rechazan solicitudes. "
+           "La decisión solo queda registrada tras la confirmación del analista.")
+
 # El botón prepara la decisión; el registro se hace en la confirmación.
 with st.container(border=True):
     st.markdown("**Acción rápida** · confirma abajo antes de guardar")
