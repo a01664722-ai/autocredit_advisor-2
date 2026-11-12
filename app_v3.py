@@ -542,6 +542,21 @@ elif page=='Ficha de solicitud':
 
     st.markdown("""
     <style>
+    /* Margen negro de seguridad bajo la barra superior de Streamlit. */
+    .ac-p2-top-spacer {
+        height: 88px;
+        width: 100%;
+        background: #0e1110;
+        margin: 0 0 8px 0;
+        border: 0;
+    }
+    .ac-p2-consulta-title {
+        color:#f1f7f3;
+        font-size:1.05rem;
+        font-weight:760;
+        line-height:1.45;
+        margin:.15rem 0 .75rem 0;
+    }
     .ac-p2-head {margin:.15rem 0 1rem 0}
     .ac-p2-title {color:#f1f7f3;font-size:1.8rem;font-weight:790;letter-spacing:-.04em;line-height:1.2;margin:.15rem 0 .25rem}
     .ac-p2-sub {color:#aebbb4;font-size:.9rem;line-height:1.55}
@@ -610,15 +625,12 @@ elif page=='Ficha de solicitud':
         signo = '+' if dif >= 0 else ''
         return f'{signo}{dif:.1f} pp'
 
-    # ========= Encabezado visible antes de los controles =========
+    # ========= Margen superior y encabezado simplificado =========
+    # Evita que el primer contenido visible quede bajo la barra de Streamlit.
     st.markdown("""
-    <div class="ac-p2-head">
-      <div class="ac-p2-title">P2 · Ficha de solicitud</div>
-      <div class="ac-p2-sub">Busca un Loan ID original de TEST o abre el que
-      seleccionaste en la bandeja. El análisis utiliza XGBoost con 12 variables.</div>
-    </div>
+    <div class="ac-p2-top-spacer" aria-hidden="true"></div>
+    <div class="ac-p2-consulta-title">Consulta del expediente</div>
     """, unsafe_allow_html=True)
-    st.markdown("**Consulta del expediente**")
 
     # ========= Selector de folio desde P2 =========
     actual_guardado = str(st.session_state.get('loan_actual') or '')
