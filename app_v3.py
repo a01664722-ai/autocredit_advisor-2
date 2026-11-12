@@ -354,7 +354,7 @@ if page == 'Bandeja':
         tipos = st.pills('Recomendación XGBoost',
             options=['Aceptar', 'Condicionar', 'Rechazar'],
             format_func=lambda opcion: {
-                'Aceptar':'🟢 Aceptar', 'Condicionar':'🟡 Condicionar', 'Rechazar':'🔴 Rechazar'
+                'Aceptar':'Aceptar', 'Condicionar':'Condicionar', 'Rechazar':'Rechazar'
             }[opcion],
             default=['Aceptar', 'Condicionar', 'Rechazar'],
             selection_mode='multi', key='p1_tipos_v3',
