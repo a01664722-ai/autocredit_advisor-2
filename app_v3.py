@@ -369,23 +369,28 @@ elif page=='Política y cartera':
             st.rerun()
         else:st.info('El corte propuesto coincide con el vigente.')
     st.caption(f'Política de tres decisiones: aceptar bajo {M.corte_base:.2%} (F2, inalterable); condicionar entre cortes; rechazar a partir del corte gerencial. Cambiar cortes consultando TEST compromete la independencia de evaluación y requiere validación posterior.')
-    thresholds=np.arange(.05,.601,.01)
-    acc=[];default_approved=[]
+    # El corte inferior queda fijo; mover rechazo cambia CONDICIONAR vs RECHAZAR,
+    # no la proporción de créditos aceptados directamente.
+    thresholds=np.arange(np.ceil(M.corte_base*1000+1)/1000,.601,.005)
+    conditional=[];rejected=[];default_conditioned=[]
     for t in thresholds:
-        mask=cases.PD_XGB<t
-        acc.append(mask.mean()*100)
-        default_approved.append(cases.loc[mask,'DEFAULT'].mean()*100 if mask.any() else np.nan)
+        mask=(cases.PD_XGB>=M.corte_base)&(cases.PD_XGB<t)
+        conditional.append(mask.mean()*100)
+        rejected.append((cases.PD_XGB>=t).mean()*100)
+        default_conditioned.append(cases.loc[mask,'DEFAULT'].mean()*100 if mask.any() else np.nan)
     fc1,fc2=st.columns(2)
     with fc1:
-        f=go.Figure(go.Scatter(x=thresholds*100,y=acc,mode='lines',line_color='#4b98ef',name='Aprobación'))
+        f=go.Figure()
+        f.add_trace(go.Scatter(x=thresholds*100,y=conditional,mode='lines',line_color='#e4be65',name='Condicionar'))
+        f.add_trace(go.Scatter(x=thresholds*100,y=rejected,mode='lines',line_color='#e56a72',name='Rechazar'))
         f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
-        f.update_layout(title='Trade-off: tasa de aprobación',xaxis_title='Corte de PD (%)',yaxis_title='Aprobación (%)',height=310,
+        f.update_layout(title='Escenarios: condicionar y rechazar (TEST)',xaxis_title='Corte superior de PD (%)',yaxis_title='Porcentaje de solicitudes (%)',height=310,
             margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
         st.plotly_chart(f,use_container_width=True)
     with fc2:
-        f=go.Figure(go.Scatter(x=thresholds*100,y=default_approved,mode='lines',line_color='#f08565',name='Incumplimiento histórico'))
+        f=go.Figure(go.Scatter(x=thresholds*100,y=default_conditioned,mode='lines',line_color='#f08565',name='Default observado condicional'))
         f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
-        f.update_layout(title='Default observado entre aprobados (TEST)',xaxis_title='Corte de PD (%)',yaxis_title='Default histórico (%)',height=310,
+        f.update_layout(title='Incumplimiento observado en zona condicional (TEST)',xaxis_title='Corte superior de PD (%)',yaxis_title='Default histórico (%)',height=310,
             margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
         st.plotly_chart(f,use_container_width=True)
     st.caption('Curvas calculadas con la variable DEFAULT de TEST, exclusivamente en agregado. Si el corte cambia después de ver TEST, debe evaluarse de nuevo en una muestra futura independiente antes de producción.')
