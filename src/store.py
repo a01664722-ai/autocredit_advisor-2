@@ -59,7 +59,7 @@ def policies():
 
 def update_policy(segment,threshold,author,affected_by_analyst=None):
     if segment not in SEGMENTS:raise ValueError('Segmento no válido')
-    if not .05<=float(threshold)<=.50:raise ValueError('Corte fuera de [0.05,0.50]')
+    if not .05<=float(threshold)<=.60:raise ValueError('Corte fuera de [0.05,0.60]')
     with db() as c:
         old=c.execute('SELECT threshold FROM policies WHERE segment=?',(segment,)).fetchone()
         if old is None:raise ValueError('No existe la política')
@@ -74,9 +74,9 @@ def update_policy(segment,threshold,author,affected_by_analyst=None):
         return True
 
 def save_decision(loan_id,analyst_id,decision,suggested,pd_xgb,pd_logit,threshold,motivo='',detail=''):
-    if decision not in ('Aprobar','Rechazar'):raise ValueError('Decisión inválida')
+    if decision not in ('Aceptar','Condicionar','Rechazar','Aprobar'):raise ValueError('Decisión inválida')
     override=decision!=suggested
-    if override and (not motivo or (motivo=='Otro' and len(detail.strip())<8)):
+    if override and (not motivo or len(detail.strip())<8):
         raise ValueError('Una decisión contraria al modelo requiere un motivo justificado')
     with db() as c:
         existing=c.execute('SELECT analyst_id FROM decisions WHERE loan_id=?',(str(loan_id),)).fetchone()
