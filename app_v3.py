@@ -544,10 +544,10 @@ elif page=='Ficha de solicitud':
     <style>
     /* Margen negro de seguridad bajo la barra superior de Streamlit. */
     .ac-p2-top-spacer {
-        height: 88px;
+        height: 20px;
         width: 100%;
-        background: #0e1110;
-        margin: 0 0 8px 0;
+        background: transparent;
+        margin: 0 0 4px 0;
         border: 0;
     }
     .ac-p2-consulta-title {
