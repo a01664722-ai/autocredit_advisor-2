@@ -181,74 +181,292 @@ if page=='Mensajes':
                 store.mark_read(x['id'],role,analyst_id);st.rerun()
     footnote();st.stop()
 
-if page=='Bandeja':
-    all_cases=rated(M.scores[M.scores.ANALISTA_ID==analyst_id])
-    done=store.decisions_map(analyst_id)
-    all_cases['ESTADO']=np.where(all_cases.LOAN_ID.isin(done),'Resuelta','Pendiente')
-    pending=all_cases[all_cases.ESTADO=='Pendiente']
-    strip_metrics([('Solicitudes asignadas*',f'{len(all_cases):,}','Filas de TEST para este analista',''),
-                   ('Pendientes',f'{len(pending):,}','Casos históricos de TEST por revisar','warn'),
-                   ('Resueltas en la demo',str(len(done)),'Decisiones guardadas en esta instancia','good'),
-                   ('Corte vigente',f'{store.policy("General")["threshold"]:.1%}','Puede variar según segmento DTI','')])
-    st.title('P1 · Bandeja de solicitudes')
-    st.caption('Decisión rápida por Loan ID original. Pronósticos XGBoost y Logit estimados solo con TRAIN; créditos de TEST. No se presenta DEFAULT observado al analista.')
-    c1,c2,c3,c4=st.columns([2,1,1,1])
-    q=c1.text_input('Buscar Loan ID',placeholder='ID exacto o parcial')
-    riesgo=c2.selectbox('Riesgo', ['Todos','Alto','Medio','Bajo'])
-    estado=c3.selectbox('Estado', ['Pendiente','Todas','Resuelta'])
-    size=c4.selectbox('Filas por página',[15,25,50],index=1)
-    d=all_cases
-    if q:d=d[d.LOAN_ID.astype(str).str.contains(q,regex=False)]
-    if riesgo!='Todos':d=d[d.SUGERENCIA.eq({'Alto':'Rechazar','Medio':'Condicionar','Bajo':'Aceptar'}[riesgo])]
-    if estado!='Todas':d=d[d.ESTADO==estado]
-    d=d.sort_values(['PD_XGB','LOAN_ID'],ascending=[False,True]).copy()
-    st.caption(f'{len(d):,} solicitudes en el filtro; mayor PD primero. Política de gerencia aplicada al instante en cada nueva consulta.')
-    if not len(d):st.warning('No hay solicitudes para esta selección. Cambia los filtros.');footnote();st.stop()
-    pages_count=max(1,(len(d)+size-1)//size)
-    ix=st.number_input('Página',min_value=1,max_value=pages_count,value=1,step=1)
-    view=d.iloc[(ix-1)*size:ix*size]
-    grid=pd.DataFrame({
-        'Loan ID':view.LOAN_ID.values,
-        'Decisión rápida':['Seleccionar']*len(view),
-        'Sugerencia':view.SUGERENCIA.values,
-        'XGBoost':np.where(view.PRED_XGB.eq(1),'Default (1)','No default (0)'),
-        'PD XGBoost':view.PD_XGB.values*100,
-        'PD Logit':view.PD_LOGIT.values*100,
-        'DTI':view.DEBT_TO_INCOME.values*100,
-        'Monto (u.m.)':view.LOAN_AMOUNT.values.astype(float),
-        'Pagos omitidos':view.MISSED_PAYMENTS_12M.values.astype(int),
+
+if page == 'Bandeja':
+    # P1 V3. Solo datos TEST y Loan ID originales; no cambiar estas reglas.
+    # XGBoost genera la PD principal y Logit es un comparador, no una regla adicional.
+    st.markdown("""
+    <style>
+    .ac-p1-head {margin:.20rem 0 1.1rem 0}
+    .ac-p1-eyebrow {color:#87bda8;font-size:.78rem;font-weight:750;letter-spacing:.12em;text-transform:uppercase}
+    .ac-p1-title {color:#f1f7f3;font-size:1.85rem;font-weight:780;letter-spacing:-.045em;line-height:1.25;margin:.18rem 0 .3rem}
+    .ac-p1-description {color:#abbab1;font-size:.89rem;line-height:1.55;max-width:1100px}
+    .ac-p1-kpis {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:.65rem 0 1.1rem}
+    .ac-p1-kpi {position:relative;overflow:hidden;min-width:0;min-height:128px;padding:17px 18px;
+        border:1px solid rgba(119,162,141,.24);border-radius:15px;
+        background:linear-gradient(140deg,rgba(36,63,52,.57),rgba(18,25,23,.65) 68%);
+        box-shadow:0 5px 24px rgba(0,0,0,.13)}
+    .ac-p1-kpi:before {content:'';position:absolute;top:0;left:18px;right:18px;height:2px;
+        background:linear-gradient(90deg,rgba(75,214,151,.85),transparent)}
+    .ac-p1-kpi.amber:before {background:linear-gradient(90deg,#e9b85f,transparent)}
+    .ac-p1-kpi.blue:before {background:linear-gradient(90deg,#79b8df,transparent)}
+    .ac-p1-kpi .name {font-size:.83rem;font-weight:650;color:#c5d3ca;line-height:1.45;
+        white-space:normal;overflow-wrap:break-word}
+    .ac-p1-kpi .number {font-size:clamp(1.55rem,2.25vw,2.10rem);font-weight:780;color:#eff8f1;
+        letter-spacing:-.04em;line-height:1.28;margin:.28rem 0 .12rem;white-space:normal}
+    .ac-p1-kpi .detail {font-size:.74rem;color:#aabdb1;line-height:1.4;
+        white-space:normal;overflow-wrap:break-word}
+    .ac-p1-inline {font-size:.81rem;color:#a7bbaf;margin:.15rem 0 .6rem}
+    .ac-p1-inline b {color:#87dcb3}
+    .ac-p1-legend {padding:.66rem .9rem;border:1px solid rgba(121,178,148,.25);
+        border-radius:10px;background:linear-gradient(115deg,rgba(34,61,48,.4),rgba(19,29,24,.15));
+        color:#c9d8cf;font-size:.83rem;line-height:1.55;margin:.4rem 0 .6rem}
+    .ac-p1-legend strong {color:#b8efd0}
+    div[data-testid="stDataFrame"] {border:1px solid rgba(100,166,130,.25);border-radius:11px;
+        box-shadow:0 7px 26px rgba(0,0,0,.1);overflow:hidden}
+    div[data-testid="stDataFrame"] [role="columnheader"] {font-weight:750!important}
+    div[data-testid="stDataFrame"] [role="gridcell"]:focus-within {outline:2px solid #62d8a3!important;
+        outline-offset:-2px;background:rgba(48,130,95,.20)!important}
+    @media(max-width:1050px){.ac-p1-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:570px){.ac-p1-kpis{grid-template-columns:1fr 1fr;gap:8px}
+        .ac-p1-kpi{padding:13px;min-height:140px}.ac-p1-title{font-size:1.45rem}}
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Un solo acceso a SQLite para obtener toda la política; así no se realizan
+    # miles de consultas por fila en cada interacción.
+    politicas = {x['segment']: x for x in store.policies()}
+    corte_general = float(politicas['General']['threshold'])
+    cortes_dti = {}
+    for segmento in ('DTI bajo', 'DTI medio', 'DTI alto'):
+        p = politicas.get(segmento)
+        cortes_dti[segmento] = (
+            float(p['threshold']) if p and p['version'] > 1 else corte_general
+        )
+
+    todos = M.scores.loc[M.scores['ANALISTA_ID'].eq(analyst_id)].copy()
+    todos['CORTE'] = todos['SEG_DTI'].map(cortes_dti).fillna(corte_general).astype(float)
+    todos['SUGERENCIA'] = np.select(
+        [todos['PD_XGB'].lt(M.corte_base), todos['PD_XGB'].lt(todos['CORTE'])],
+        ['Aceptar', 'Condicionar'], default='Rechazar'
+    )
+    decisiones = store.decisions_map(analyst_id)
+    todos['ESTADO'] = np.where(todos['LOAN_ID'].isin(decisiones), 'Resuelta', 'Pendiente')
+
+    total = len(todos)
+    resueltas = int(todos['ESTADO'].eq('Resuelta').sum())
+    pendientes = total - resueltas
+    priorizadas = int(todos['SUGERENCIA'].eq('Rechazar').sum())
+
+    st.markdown(f"""
+    <div class="ac-p1-head">
+      <div class="ac-p1-eyebrow">AutoCredit Advisor · Operación crediticia</div>
+      <div class="ac-p1-title">P1 · Bandeja de solicitudes</div>
+      <div class="ac-p1-description">{html.escape(name)} · {html.escape(analyst_id)} ·
+      Préstamos originales de TEST, predichos por XGBoost (12 variables). La asignación a analistas es demostrativa.</div>
+    </div>
+    <div class="ac-p1-kpis">
+      <div class="ac-p1-kpi blue"><div class="name">Solicitudes asignadas</div>
+        <div class="number">{total:,}</div><div class="detail">Registros de TEST bajo este perfil*</div></div>
+      <div class="ac-p1-kpi amber"><div class="name">Pendientes de decisión</div>
+        <div class="number">{pendientes:,}</div><div class="detail">Aún sin decisión registrada</div></div>
+      <div class="ac-p1-kpi"><div class="name">Resueltas en esta instancia</div>
+        <div class="number">{resueltas:,}</div><div class="detail">Registradas en la bitácora compartida*</div></div>
+      <div class="ac-p1-kpi amber"><div class="name">Umbral de rechazo · General</div>
+        <div class="number">{corte_general:.1%}</div>
+        <div class="detail">La gerencia puede definir cortes diferentes por DTI</div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(
+        f'<div class="ac-p1-inline"><b>{priorizadas:,}</b> casos clasificados para rechazo '
+        f'por la política vigente · Aceptar bajo <b>{M.corte_base:.2%}</b> '
+        f'· Cortes de rechazo por DTI: '
+        + ' / '.join(f'{x.replace("DTI ", "").capitalize()} {v:.1%}' for x, v in cortes_dti.items())
+        + '</div>', unsafe_allow_html=True
+    )
+
+    # Filtros intuitivos como la antigua P1, pero sobre las predicciones V3.
+    def _p1_restaurar():
+        st.session_state['p1_estado_v3'] = 'Pendiente'
+        st.session_state['p1_tipos_v3'] = ['Aceptar', 'Condicionar', 'Rechazar']
+        st.session_state['p1_buscar_v3'] = ''
+        st.session_state['p1_orden_v3'] = 'Intercalado · tres decisiones'
+        st.session_state['p1_filas_v3'] = 15
+        st.session_state['p1_pagina_v3'] = 1
+
+    f1, f2 = st.columns([1.1, 1.6], gap='large')
+    with f1:
+        estado = st.segmented_control('Estado de la solicitud',
+            options=['Pendiente', 'Resuelta', 'Todas'], default='Pendiente',
+            key='p1_estado_v3', help='Filtra tus casos; no muestra solicitudes de otros analistas.')
+    with f2:
+        tipos = st.pills('Recomendación XGBoost',
+            options=['Aceptar', 'Condicionar', 'Rechazar'],
+            default=['Aceptar', 'Condicionar', 'Rechazar'],
+            selection_mode='multi', key='p1_tipos_v3',
+            help='Selecciona una o varias recomendaciones; las tres aparecen mezcladas por defecto.')
+
+    c1, c2, c3, c4 = st.columns([2.1, 1.65, .9, 1.05], gap='small', vertical_alignment='bottom')
+    with c1:
+        busqueda = st.text_input('Buscar Loan ID', placeholder='Ej. 468086', key='p1_buscar_v3')
+    with c2:
+        orden = st.selectbox('Ordenar', [
+            'Intercalado · tres decisiones', 'PD más alta primero',
+            'PD más baja primero', 'Loan ID ascendente'], key='p1_orden_v3')
+    with c3:
+        tamano = st.selectbox('Filas', [15, 25, 50], key='p1_filas_v3')
+    with c4:
+        st.button('Restablecer', icon=':material/restart_alt:',
+                  on_click=_p1_restaurar, use_container_width=True)
+
+    filtrada = todos
+    if estado != 'Todas':
+        filtrada = filtrada.loc[filtrada['ESTADO'].eq(estado)]
+    if not tipos:
+        filtrada = filtrada.iloc[0:0]
+    else:
+        filtrada = filtrada.loc[filtrada['SUGERENCIA'].isin(tipos)]
+    if busqueda.strip():
+        filtrada = filtrada.loc[
+            filtrada['LOAN_ID'].astype(str).str.contains(busqueda.strip(), case=False, regex=False)
+        ]
+
+    if orden == 'PD más alta primero':
+        filtrada = filtrada.sort_values(['PD_XGB', 'LOAN_ID'], ascending=[False, True])
+    elif orden == 'PD más baja primero':
+        filtrada = filtrada.sort_values(['PD_XGB', 'LOAN_ID'])
+    elif orden == 'Loan ID ascendente':
+        filtrada = filtrada.sort_values('LOAN_ID')
+    else:
+        # Mezcla reproducible de las tres decisiones. No mezcla analistas ni TRAIN.
+        # En cada nivel, Loan IDs quedan aleatorizados de forma estable.
+        mezclada = filtrada.assign(
+            _hash=pd.util.hash_pandas_object(filtrada['LOAN_ID'].astype(str), index=False).to_numpy()
+        )
+        grupos = [
+            mezclada.loc[mezclada['SUGERENCIA'].eq(tipo)].sort_values('_hash').index.to_numpy()
+            for tipo in ('Rechazar', 'Aceptar', 'Condicionar')
+        ]
+        posiciones = []
+        for i in range(max((len(g) for g in grupos), default=0)):
+            for grupo in grupos:
+                if i < len(grupo):
+                    posiciones.append(grupo[i])
+        filtrada = mezclada.loc[posiciones].drop(columns='_hash')
+
+    n_filtradas = len(filtrada)
+    if not n_filtradas:
+        st.warning('No hay solicitudes para esta combinación. Modifica los filtros o pulsa Restablecer.',
+                   icon=':material/filter_alt_off:')
+        footnote()
+        st.stop()
+
+    paginas = max(1, (n_filtradas + tamano - 1) // tamano)
+    if 'p1_pagina_v3' not in st.session_state or not 1 <= st.session_state['p1_pagina_v3'] <= paginas:
+        st.session_state['p1_pagina_v3'] = 1
+
+    def _p1_anterior():
+        st.session_state['p1_pagina_v3'] = max(1, st.session_state['p1_pagina_v3'] - 1)
+
+    def _p1_siguiente():
+        st.session_state['p1_pagina_v3'] = min(paginas, st.session_state['p1_pagina_v3'] + 1)
+
+    barra, anterior, pagina, siguiente = st.columns([3.0, 1.2, 1.0, 1.2],
+                                                      gap='small', vertical_alignment='bottom')
+    with barra:
+        st.caption(f'{n_filtradas:,} resultados · datos de TEST · {paginas:,} páginas. '
+                   f'Orden: {orden.lower()}.')
+    with anterior:
+        st.button('← Anterior', disabled=st.session_state['p1_pagina_v3'] <= 1,
+                  use_container_width=True, on_click=_p1_anterior)
+    with pagina:
+        actual = st.number_input('Página', min_value=1, max_value=paginas,
+                                 step=1, key='p1_pagina_v3')
+    with siguiente:
+        st.button('Siguiente →', disabled=actual >= paginas,
+                  use_container_width=True, on_click=_p1_siguiente)
+
+    vista = filtrada.iloc[(actual - 1) * tamano:actual * tamano].copy()
+
+    # Monto como precio legible, con separador de miles y 2 decimales.
+    # Se usa u.m. porque la moneda de origen no está validada (no inventar MXN).
+    tabla = pd.DataFrame({
+        'Loan ID': vista['LOAN_ID'].astype(str).to_numpy(),
+        'Decisión rápida': ['Seleccionar'] * len(vista),
+        'Sugerencia': vista['SUGERENCIA'].to_numpy(),
+        'XGBoost': np.where(vista['PRED_XGB'].eq(1), 'Default (1)', 'No default (0)'),
+        'PD XGB': vista['PD_XGB'].map(lambda x: f'{x:.1%}').to_numpy(),
+        'PD Logit': vista['PD_LOGIT'].map(lambda x: f'{x:.1%}').to_numpy(),
+        'DTI': vista['DEBT_TO_INCOME'].map(lambda x: f'{x:.1%}').to_numpy(),
+        'Monto (u.m.)': vista['LOAN_AMOUNT'].map(lambda x: f'{x:,.2f}').to_numpy(),
+        'Pagos 12m': vista['MISSED_PAYMENTS_12M'].astype(int).to_numpy(),
     })
-    st.info('Selecciona la celda de **Decisión rápida** (segunda columna). Aceptar / Condicionar / Rechazar se registran directamente cuando coinciden con XGBoost. Si difieren, se abre la ficha con doble confirmación y aviso a gerencia.',icon=':material/rule:')
-    def _cell_colors(row):
-        color = '#1d583d' if row['Sugerencia']=='Aceptar' else '#64292f' if row['Sugerencia']=='Rechazar' else '#614711'
-        styles=['']*len(row)
-        styles[list(row.index).index('Sugerencia')]=f'background-color:{color};color:#ffffff;font-weight:650'
-        styles[list(row.index).index('PD XGBoost')]=f'color:{"#ee818a" if row["Sugerencia"]=="Rechazar" else "#61dba3"};font-weight:650'
-        return styles
-    styled=grid.style.apply(_cell_colors,axis=1)
-    edited=st.data_editor(styled,hide_index=True,use_container_width=True,num_rows='fixed',row_height=40,
-      key=f'editor_{analyst_id}_{st.session_state.get("table_rev",0)}_{ix}_{estado}_{riesgo}_{q}',
-      disabled=['Loan ID','Sugerencia','XGBoost','PD XGBoost','PD Logit','DTI','Monto (u.m.)','Pagos omitidos'],
-      column_config={
-        'Loan ID':st.column_config.TextColumn('Loan ID',width='small'),
-        'Decisión rápida':st.column_config.SelectboxColumn('Decisión rápida',options=['Seleccionar','Aceptar','Condicionar','Rechazar','Ver detalle'],width='medium',required=True),
-        'Sugerencia':st.column_config.TextColumn('Sugerencia',width='small',help='Tres zonas de PD XGBoost: aceptar < F2 óptimo; condicionar entre los cortes; rechazar sobre el segundo. Gerencia puede ajustar el corte de rechazo.'),
-        'XGBoost':st.column_config.TextColumn('XGB clase',width='small',help='Clase técnica XGBoost al umbral inferior F2 (1 = default). La recomendación usa tres zonas.'),
-        'PD XGBoost':st.column_config.ProgressColumn('PD XGB',min_value=0,max_value=100,format='%.1f%%',width='small',help='Probabilidad predicha por XGBoost'),
-        'PD Logit':st.column_config.NumberColumn('PD Logit',format='%.1f%%',help='Probabilidad complementaria estimada con regresión logística de 12 variables; NO determina la sugerencia.',width='small'),
-        'DTI':st.column_config.NumberColumn('DTI',format='%.1f%%',width='small'),
-        'Monto (u.m.)':st.column_config.NumberColumn('Monto',format='%.0f',width='small'),
-        'Pagos omitidos':st.column_config.NumberColumn('Pagos 12m',format='%d',width='small'),
-      })
-    changed=edited.index[edited['Decisión rápida']!='Seleccionar'].tolist()
-    if changed:
-        i=changed[0];loan=str(edited.loc[i,'Loan ID'])
-        row=view.loc[view.LOAN_ID==loan].iloc[0]
-        action=edited.loc[i,'Decisión rápida']
-        if action=='Ver detalle':open_loan(loan)
-        elif action in ('Aceptar','Condicionar','Rechazar'):ask_decision(row,action)
-    st.caption('Los folios son Loan ID verdaderos de la base sintética. El analista asignado* es una simulación; no existe fecha de recepción real.')
-    footnote()
+
+    def _color_fila(fila):
+        colores = {
+            'Aceptar': ('#82eac0', 'rgba(24,137,94,.14)'),
+            'Condicionar': ('#f4ce82', 'rgba(165,111,22,.14)'),
+            'Rechazar': ('#fb9fa7', 'rgba(169,45,66,.15)'),
+        }
+        fg, bg = colores[fila['Sugerencia']]
+        resultado = [''] * len(fila)
+        resultado[fila.index.get_loc('Sugerencia')] = (
+            f'color:{fg};background-color:{bg};font-weight:730;'
+        )
+        resultado[fila.index.get_loc('PD XGB')] = (
+            f'color:{fg};background-color:{bg};font-weight:750;'
+        )
+        resultado[fila.index.get_loc('Decisión rápida')] = (
+            'color:#bce5d0;background-color:rgba(37,103,81,.13);font-weight:650;'
+        )
+        return resultado
+
+    st.markdown('''<div class="ac-p1-legend"><strong>Decisión rápida:</strong>
+      elige una opción en la segunda columna. Si coincide con la recomendación se guarda
+      sin abrir otra pantalla. Si difiere, se abrirá la ficha con confirmación, motivo
+      obligatorio y aviso a gerencia. <strong>Rojo</strong> = rechazar,
+      <strong>ámbar</strong> = condicionar, <strong>verde</strong> = aceptar.
+      La PD Logit es solo una referencia.</div>''', unsafe_allow_html=True)
+
+    editada = st.data_editor(
+        tabla.style.apply(_color_fila, axis=1),
+        hide_index=True, num_rows='fixed', use_container_width=True,
+        row_height=41, height=min(590, (len(tabla) + 1) * 41 + 13),
+        key=f'p1_editor_v3_{analyst_id}_{st.session_state.get("table_rev", 0)}_'
+            f'{actual}_{tamano}_{estado}_{"-".join(tipos)}_{orden}_{busqueda}',
+        disabled=[c for c in tabla.columns if c != 'Decisión rápida'],
+        column_config={
+            'Loan ID': st.column_config.TextColumn('Loan ID', width='small'),
+            'Decisión rápida': st.column_config.SelectboxColumn(
+                'Decisión rápida', width='medium', required=True,
+                options=['Seleccionar', 'Aceptar', 'Condicionar', 'Rechazar', 'Ver detalle']),
+            'Sugerencia': st.column_config.TextColumn('Sugerencia', width='small',
+                help='XGBoost, tres zonas. Corte inferior F2 fijo y corte superior gerencial por DTI.'),
+            'XGBoost': st.column_config.TextColumn('XGB clase', width='small',
+                help='Clasificación binaria del modelo con el umbral inferior F2. 1 indica riesgo de default.'),
+            'PD XGB': st.column_config.TextColumn('PD XGB', width='small',
+                help='Probabilidad de incumplimiento estimada por el modelo campeón XGBoost.'),
+            'PD Logit': st.column_config.TextColumn('PD Logit', width='small',
+                help='Modelo complementario; no altera la recomendación de crédito.'),
+            'DTI': st.column_config.TextColumn('DTI', width='small',
+                help='Deuda total sobre ingreso.'),
+            'Monto (u.m.)': st.column_config.TextColumn('Monto (u.m.)', width='small',
+                help='Monto solicitado; valores con separador de miles y decimales. Moneda aún no certificada.'),
+            'Pagos 12m': st.column_config.NumberColumn('Pagos 12m', format='%d', width='small',
+                help='Número de pagos incumplidos durante los últimos 12 meses.'),
+        }
+    )
+
+    cambio = editada.index[editada['Decisión rápida'].ne('Seleccionar')].tolist()
+    if cambio:
+        pos = cambio[0]
+        loan = str(editada.at[pos, 'Loan ID'])
+        accion = str(editada.at[pos, 'Decisión rápida'])
+        registro = vista.loc[vista['LOAN_ID'].astype(str).eq(loan)]
+        if registro.empty:
+            st.error('El Loan ID seleccionado ya no pertenece a la vista filtrada.')
+        elif accion == 'Ver detalle':
+            open_loan(loan)
+        elif accion in ('Aceptar', 'Condicionar', 'Rechazar'):
+            # Mantiene el flujo compartido de app_v3: guarda coincidencias desde
+            # P1, y ante una excepción abre P2 y el cuadro de confirmación.
+            ask_decision(registro.iloc[0], accion)
+
+    st.caption('Fuente: archivos TRAIN/TEST de 12 variables del equipo. Loan ID original de TEST. '
+               'Predicciones calculadas con XGBoost y Logit. Asignaciones de analistas, '
+               'decisiones operativas y mensajes: demostración académica; no producción.')
+
 
 elif page=='Ficha de solicitud':
     all_cases=rated(M.scores[M.scores.ANALISTA_ID==analyst_id])
