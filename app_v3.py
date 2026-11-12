@@ -532,71 +532,526 @@ if page == 'Bandeja':
 
 
 elif page=='Ficha de solicitud':
-    all_cases=rated(M.scores[M.scores.ANALISTA_ID==analyst_id])
-    loan=st.session_state.get('loan_actual')
-    if not loan:
-        st.info('Primero selecciona un Loan ID desde la bandeja.')
-        if st.button('Abrir bandeja'):st.session_state.page_to='Bandeja';st.rerun()
+    all_cases = rated(M.scores[M.scores.ANALISTA_ID == analyst_id]).copy()
+
+    st.markdown("""
+    <style>
+    .ac-p2-head {margin:.15rem 0 1rem 0}
+    .ac-p2-title {color:#f1f7f3;font-size:1.8rem;font-weight:790;letter-spacing:-.04em;line-height:1.2;margin:.15rem 0 .25rem}
+    .ac-p2-sub {color:#aebbb4;font-size:.9rem;line-height:1.55}
+    .ac-p2-cards {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:.55rem 0 1rem}
+    .ac-p2-card {position:relative;overflow:hidden;min-height:116px;padding:15px 18px;border-radius:15px;
+        border:1px solid rgba(119,162,141,.24);
+        background:linear-gradient(140deg,rgba(36,63,52,.57),rgba(18,25,23,.66) 68%);
+        box-shadow:0 5px 24px rgba(0,0,0,.13)}
+    .ac-p2-card:before {content:'';position:absolute;top:0;left:16px;right:16px;height:2px;
+        background:linear-gradient(90deg,rgba(75,214,151,.85),transparent)}
+    .ac-p2-card .label {font-size:.79rem;color:#c6d5cc;font-weight:650;line-height:1.4}
+    .ac-p2-card .value {font-size:clamp(1.35rem,2.2vw,2.45rem);font-weight:800;color:#eff8f1;line-height:1.22;margin:.28rem 0 .12rem}
+    .ac-p2-card .sub {font-size:.73rem;color:#a9bbb1;line-height:1.45}
+    .ac-p2-card.alert {border-color:rgba(231,113,130,.34);background:linear-gradient(140deg,rgba(95,38,48,.40),rgba(19,26,23,.76) 73%)}
+    .ac-p2-card.alert:before {background:linear-gradient(90deg,#f08290,transparent)}
+    .ac-p2-card.alert .value {color:#ffb7bf}
+    .ac-p2-card.warn {border-color:rgba(227,182,90,.32);background:linear-gradient(140deg,rgba(103,75,28,.33),rgba(19,26,23,.76) 73%)}
+    .ac-p2-card.warn:before {background:linear-gradient(90deg,#f0c56b,transparent)}
+    .ac-p2-card.warn .value {color:#f8d58c}
+    .ac-p2-card.ok {border-color:rgba(92,209,144,.34);background:linear-gradient(140deg,rgba(28,100,69,.30),rgba(19,26,23,.76) 73%)}
+    .ac-p2-card.ok:before {background:linear-gradient(90deg,#61d99a,transparent)}
+    .ac-p2-card.ok .value {color:#97e8ba}
+    .ac-p2-card.blue:before {background:linear-gradient(90deg,#7ab9e6,transparent)}
+    .ac-p2-banner {padding:.8rem 1rem;border-radius:12px;border:1px solid rgba(255,255,255,.06);margin:.28rem 0 .65rem;font-size:.93rem;line-height:1.5}
+    .ac-p2-banner strong {font-weight:780}
+    .ac-p2-banner.danger {background:rgba(122,39,54,.50);color:#ffd3d8;border-color:rgba(237,118,134,.18)}
+    .ac-p2-banner.warn {background:rgba(103,73,24,.42);color:#fde2aa;border-color:rgba(229,184,92,.18)}
+    .ac-p2-banner.ok {background:rgba(25,86,60,.40);color:#c7f2da;border-color:rgba(98,218,157,.18)}
+    .ac-p2-toolbar {padding:.72rem .9rem;border:1px solid rgba(100,166,130,.18);border-radius:12px;
+        background:linear-gradient(115deg,rgba(33,59,48,.40),rgba(20,30,24,.12));margin:.2rem 0 .85rem}
+    .ac-p2-section {padding:.15rem 0 .1rem 0}
+    .ac-p2-section h3 {font-size:1.55rem!important;letter-spacing:-.03em}
+    .ac-p2-chip {display:inline-block;padding:.2rem .55rem;border-radius:999px;font-size:.76rem;font-weight:700;margin-right:.35rem}
+    .ac-p2-chip.r-low {background:rgba(40,125,83,.28);color:#8fe1b5}
+    .ac-p2-chip.r-mid {background:rgba(128,92,24,.30);color:#f2d48f}
+    .ac-p2-chip.r-high {background:rgba(134,45,60,.30);color:#ffb3bd}
+    @media(max-width:1180px){.ac-p2-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:760px){.ac-p2-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    </style>
+    """, unsafe_allow_html=True)
+
+    if all_cases.empty:
+        st.warning('No hay solicitudes asignadas a este analista.', icon=':material/inbox:')
+        footnote()
         st.stop()
-    rows=all_cases[all_cases.LOAN_ID==str(loan)]
-    if rows.empty:st.error('Loan ID no disponible para tu analista.');st.stop()
-    r=rows.iloc[0]
-    hist=float(M.train.DEFAULT.mean())
-    tone='bad' if r.PD_XGB>=r.CORTE else 'warn' if r.PD_XGB>=M.corte_base else 'good'
-    strip_metrics([('PD XGBoost**',f'{r.PD_XGB:.1%}',f'vs. corte {r.CORTE:.1%}',tone),
-                   ('PD Logit**',f'{r.PD_LOGIT:.1%}','Referencia complementaria','warn' if r.PD_LOGIT>=r.CORTE else ''),
-                   ('Incumplimiento histórico',f'{hist:.2%}','Tasa observada de TRAIN; no es un límite',''),
-                   ('Deuda / ingreso',f'{r.DEBT_TO_INCOME:.1%}',f'vs. mediana TRAIN {M.train.DEBT_TO_INCOME.median():.1%}',
-                    'bad' if r.DEBT_TO_INCOME>M.train.DEBT_TO_INCOME.median() else 'good')])
-    if r.SUGERENCIA=='Rechazar':
-        st.error(f'ALERTA · PD XGBoost {r.PD_XGB:.1%} supera el corte de rechazo {r.CORTE:.1%}.',icon=':material/warning:')
-    elif r.SUGERENCIA=='Condicionar':
-        st.warning(f'RIESGO INTERMEDIO · PD XGBoost {r.PD_XGB:.1%}: requiere análisis de condiciones documentadas.',icon=':material/info:')
+
+    # ========= Helpers =========
+    def _nivel_relativo(valor, serie):
+        q1 = float(serie.quantile(.25))
+        q2 = float(serie.quantile(.50))
+        q3 = float(serie.quantile(.75))
+        if valor <= q1:
+            return 'Bajo'
+        elif valor <= q3:
+            return 'Medio'
+        return 'Alto'
+
+    def _card_tone(sugerencia):
+        return 'alert' if sugerencia == 'Rechazar' else 'warn' if sugerencia == 'Condicionar' else 'ok'
+
+    def _pct_pp(valor):
+        return f'{valor:.1%}'
+
+    def _pp_diff(valor, referencia):
+        dif = (valor - referencia) * 100
+        signo = '+' if dif >= 0 else ''
+        return f'{signo}{dif:.1f} pp'
+
+    # ========= Selector de folio desde P2 =========
+    actual_guardado = str(st.session_state.get('loan_actual') or '')
+    cbar1, cbar2, cbar3 = st.columns([1.9, 1.25, .8], gap='small', vertical_alignment='bottom')
+
+    with cbar1:
+        buscar = st.text_input(
+            'Buscar Loan ID',
+            value=actual_guardado,
+            placeholder='Ej. 277432',
+            key='p2_buscar_loan'
+        )
+
+    coincidencias = all_cases.copy()
+    if buscar.strip():
+        coincidencias = coincidencias[
+            coincidencias['LOAN_ID'].astype(str).str.contains(buscar.strip(), case=False, regex=False)
+        ]
+
+    coincidencias = coincidencias.sort_values(['PD_XGB', 'LOAN_ID'], ascending=[False, True])
+
+    opciones = coincidencias['LOAN_ID'].astype(str).tolist()[:250]
+    if not opciones:
+        st.warning('No hay coincidencias para ese Loan ID dentro de las solicitudes asignadas.', icon=':material/search_off:')
+        if st.button('Volver a bandeja', icon=':material/arrow_back:'):
+            st.session_state.page_to = 'Bandeja'
+            st.rerun()
+        footnote()
+        st.stop()
+
+    idx_default = opciones.index(actual_guardado) if actual_guardado in opciones else 0
+    with cbar2:
+        loan = st.selectbox('Selecciona el folio', opciones, index=idx_default, key='p2_selector_loan')
+
+    with cbar3:
+        if st.button('Cargar detalle', use_container_width=True, icon=':material/visibility:'):
+            st.session_state['loan_actual'] = str(loan)
+            st.rerun()
+
+    st.session_state['loan_actual'] = str(loan)
+
+    rows = all_cases[all_cases['LOAN_ID'].astype(str) == str(loan)]
+    if rows.empty:
+        st.error('El Loan ID seleccionado no está disponible para este analista.')
+        footnote()
+        st.stop()
+
+    r = rows.iloc[0]
+
+    # ========= Referencias TRAIN / TEST =========
+    train_good = M.train[M.train.DEFAULT == 0]
+    train_bad = M.train[M.train.DEFAULT == 1]
+
+    hist_train = float(M.train.DEFAULT.mean())
+    med_pd_test = float(M.scores.PD_XGB.median())
+
+    dti_med_good = float(train_good.DEBT_TO_INCOME.median())
+    pti_med_good = float(train_good.PAYMENT_TO_INCOME.median())
+    ru_med_good = float(train_good.REVOLVING_UTILIZATION.median())
+    ltv_med_good = float(train_good.LOAN_TO_VALUE.median())
+    dp_med_good = float(train_good.DOWN_PAYMENT_PCT.median())
+
+    dti_nivel = _nivel_relativo(float(r.DEBT_TO_INCOME), M.train.DEBT_TO_INCOME)
+    riesgo_nivel = 'Alto' if r.SUGERENCIA == 'Rechazar' else 'Medio' if r.SUGERENCIA == 'Condicionar' else 'Bajo'
+    tone = _card_tone(r.SUGERENCIA)
+
+    st.markdown(f"""
+    <div class="ac-p2-head">
+      <div class="ac-p2-title">P2 · Ficha de solicitud</div>
+      <div class="ac-p2-sub">
+        <strong>Loan ID {html.escape(str(r.LOAN_ID))}</strong> · {html.escape(str(r.SEG_DTI))} ·
+        Sugerencia del modelo: <strong>{html.escape(str(r.SUGERENCIA))}</strong>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ========= Main insights =========
+    st.markdown(f"""
+    <div class="ac-p2-cards">
+      <div class="ac-p2-card {tone}">
+        <div class="label">PD XGBoost</div>
+        <div class="value">{r.PD_XGB:.1%}</div>
+        <div class="sub">vs. corte de rechazo {r.CORTE:.1%}</div>
+      </div>
+      <div class="ac-p2-card {'alert' if r.PD_LOGIT >= r.CORTE else 'warn' if r.PD_LOGIT >= M.corte_base else 'ok'}">
+        <div class="label">PD Logit</div>
+        <div class="value">{r.PD_LOGIT:.1%}</div>
+        <div class="sub">Referencia complementaria</div>
+      </div>
+      <div class="ac-p2-card {tone}">
+        <div class="label">Decisión propuesta</div>
+        <div class="value">{html.escape(str(r.SUGERENCIA))}</div>
+        <div class="sub">Según XGBoost y la política vigente</div>
+      </div>
+      <div class="ac-p2-card {'alert' if riesgo_nivel=='Alto' else 'warn' if riesgo_nivel=='Medio' else 'ok'}">
+        <div class="label">Nivel de riesgo</div>
+        <div class="value">{riesgo_nivel}</div>
+        <div class="sub">Interpretación operativa del caso</div>
+      </div>
+      <div class="ac-p2-card {'alert' if dti_nivel=='Alto' else 'warn' if dti_nivel=='Medio' else 'ok'}">
+        <div class="label">Endeudamiento</div>
+        <div class="value">{dti_nivel}</div>
+        <div class="sub">DTI {r.DEBT_TO_INCOME:.1%} vs. mediana TRAIN {M.train.DEBT_TO_INCOME.median():.1%}</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ========= Banners =========
+    if r.SUGERENCIA == 'Rechazar':
+        st.markdown(
+            f'<div class="ac-p2-banner danger"><strong>ALERTA ·</strong> '
+            f'La PD XGBoost es <strong>{r.PD_XGB:.1%}</strong> y supera el corte de rechazo '
+            f'(<strong>{r.CORTE:.1%}</strong>). La decisión propuesta por el modelo es <strong>RECHAZAR</strong>.</div>',
+            unsafe_allow_html=True
+        )
+    elif r.SUGERENCIA == 'Condicionar':
+        st.markdown(
+            f'<div class="ac-p2-banner warn"><strong>RIESGO INTERMEDIO ·</strong> '
+            f'La PD XGBoost es <strong>{r.PD_XGB:.1%}</strong>. El caso cae en la zona de '
+            f'<strong>CONDICIONAR</strong>; revisar capacidad de pago, documentación y condiciones del crédito.</div>',
+            unsafe_allow_html=True
+        )
     else:
-        st.success(f'RIESGO INFERIOR · PD XGBoost {r.PD_XGB:.1%} por debajo del corte F2 {M.corte_base:.1%}; validar expediente.',icon=':material/check_circle:')
-    pd_mediana=float(M.scores.PD_XGB.median())
-    if r.PD_XGB>pd_mediana:
-        st.error(f'Comparación con TEST: PD {r.PD_XGB:.1%} supera la mediana {pd_mediana:.1%}.',icon=':material/trending_up:')
-    st.title('P2 · Ficha de solicitud')
-    st.markdown(f'**Loan ID {html.escape(str(r.LOAN_ID))}** · {r.SEG_DTI} · Sugerencia: **{r.SUGERENCIA}**')
-    st.caption('El modelo no toma la decisión final; el analista confirma y la bitácora registra el motivo cuando discrepa.')
-    b1,b2,b3,b4=st.columns([1,1,1,2])
-    if b1.button('Aceptar',icon=':material/check_circle:',use_container_width=True,type='primary'):
-        ask_decision(r,'Aceptar')
-    if b2.button('Condicionar',icon=':material/rule:',use_container_width=True):
-        ask_decision(r,'Condicionar')
-    if b3.button('Rechazar',icon=':material/block:',use_container_width=True):
-        ask_decision(r,'Rechazar')
-    if b4.button('Volver a bandeja',icon=':material/arrow_back:'):
-        st.session_state.page_to='Bandeja';st.rerun()
-    c1,c2=st.columns([1,1])
-    with c1:
-        st.subheader('Riesgo y política')
-        fig=go.Figure(go.Indicator(mode='gauge+number',value=r.PD_XGB*100,
-            number={'suffix':'%'},gauge={'axis':{'range':[0,100]},'bar':{'color':'#e56a72' if r.SUGERENCIA=='Rechazar' else '#36d78e'},
-             'steps':[{'range':[0,r.CORTE*100],'color':'#133e2d'},{'range':[r.CORTE*100,100],'color':'#45292f'}],
-             'threshold':{'line':{'color':'#ffffff','width':3},'value':r.CORTE*100}}))
-        fig.update_layout(height=245,margin=dict(l=30,r=30,t=16,b=12),paper_bgcolor='rgba(0,0,0,0)',font_color='#e8f4ed')
-        st.plotly_chart(fig,use_container_width=True)
-        st.caption('Línea blanca = corte configurado por Mariana. Verde: bajo corte; rojo: sobre corte.')
-    with c2:
-        st.subheader('Comparación con pagadores cumplidos')
-        fields=['DEBT_TO_INCOME','REVOLVING_UTILIZATION','DOWN_PAYMENT_PCT','LOAN_TO_VALUE']
-        benchmark=M.train[M.train.DEFAULT==0][fields].median()
-        yy=[LABELS[x] for x in fields]
-        fg=go.Figure()
-        fg.add_trace(go.Bar(name='Este Loan ID',y=yy,x=[r[k]*100 for k in fields],orientation='h',marker_color='#6ea8fe'))
-        fg.add_trace(go.Bar(name='Mediana sin incumplimiento en TRAIN',y=yy,x=[benchmark[k]*100 for k in fields],orientation='h',marker_color='#88918a'))
-        fg.update_layout(barmode='group',height=275,margin=dict(l=4,r=10,t=5,b=0),paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)',font_color='#e8f4ed',xaxis_title='Porcentaje (%)',legend=dict(orientation='h',y=1.14))
-        st.plotly_chart(fg,use_container_width=True)
-    with st.expander('Expediente y variables de riesgo',expanded=False):
-        df=pd.DataFrame([{'Variable':LABELS[k],'Solicitud':formato(k,r[k]),
-             'Mediana buenos pagadores (TRAIN)':formato(k,M.train[M.train.DEFAULT==0][k].median())} for k in COLS if k!='FINANCIAL_LITERACY_SCORE'])
-        st.dataframe(df,hide_index=True,use_container_width=True)
-        st.caption('La variable de educación financiera se utiliza en la comparación académica de 12 predictores, pero se excluye del expediente del analista por riesgo de proxy socioeconómico.')
-    if st.session_state.get('pending_choice') and str(st.session_state.pending_choice.get('loan_id'))==str(loan):
+        st.markdown(
+            f'<div class="ac-p2-banner ok"><strong>RIESGO INFERIOR ·</strong> '
+            f'La PD XGBoost es <strong>{r.PD_XGB:.1%}</strong>, por debajo del corte inferior. '
+            f'La decisión propuesta es <strong>ACEPTAR</strong>, sujeta a validación documental.</div>',
+            unsafe_allow_html=True
+        )
+
+    if r.PD_XGB > med_pd_test:
+        st.markdown(
+            f'<div class="ac-p2-banner danger"><strong>Comparación con TEST ·</strong> '
+            f'La PD de este caso (<strong>{r.PD_XGB:.1%}</strong>) supera la mediana de TEST '
+            f'(<strong>{med_pd_test:.1%}</strong>).</div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f'<div class="ac-p2-banner ok"><strong>Comparación con TEST ·</strong> '
+            f'La PD de este caso (<strong>{r.PD_XGB:.1%}</strong>) está por debajo de la mediana de TEST '
+            f'(<strong>{med_pd_test:.1%}</strong>).</div>',
+            unsafe_allow_html=True
+        )
+
+    if st.session_state.get('pending_choice') and str(st.session_state['pending_choice'].get('loan_id')) == str(r.LOAN_ID):
+        eleccion = st.session_state['pending_choice'].get('choice')
+        st.markdown(
+            f'<div class="ac-p2-banner warn"><strong>Advertencia de excepción ·</strong> '
+            f'Estás intentando registrar <strong>{eleccion}</strong>, que difiere de la '
+            f'recomendación del modelo. Al confirmar, se pedirá justificación y se notificará a gerencia.</div>',
+            unsafe_allow_html=True
+        )
+
+    # ========= Barra de acciones =========
+    st.markdown('<div class="ac-p2-toolbar">El modelo no toma la decisión final; el analista confirma. '
+                'Si la decisión contradice la recomendación, se abrirá una confirmación con motivo obligatorio.</div>',
+                unsafe_allow_html=True)
+
+    b1, b2, b3, b4 = st.columns([1, 1, 1, .85], gap='small')
+    with b1:
+        if st.button('Aceptar', icon=':material/check_circle:',
+                     use_container_width=True, type='primary' if r.SUGERENCIA == 'Aceptar' else 'secondary'):
+            ask_decision(r, 'Aceptar')
+    with b2:
+        if st.button('Condicionar', icon=':material/rule:',
+                     use_container_width=True, type='primary' if r.SUGERENCIA == 'Condicionar' else 'secondary'):
+            ask_decision(r, 'Condicionar')
+    with b3:
+        if st.button('Rechazar', icon=':material/block:',
+                     use_container_width=True, type='primary' if r.SUGERENCIA == 'Rechazar' else 'secondary'):
+            ask_decision(r, 'Rechazar')
+    with b4:
+        if st.button('Volver a bandeja', icon=':material/arrow_back:', use_container_width=True):
+            st.session_state.page_to = 'Bandeja'
+            st.rerun()
+
+    # ========= Gráficas 1 =========
+    st.markdown('<div class="ac-p2-section"></div>', unsafe_allow_html=True)
+    g1, g2 = st.columns([1.05, .95], gap='large')
+
+    with g1:
+        st.subheader('Mapa de decisión del modelo')
+        fig = go.Figure()
+
+        fig.add_trace(go.Indicator(
+            mode='gauge+number',
+            value=float(r.PD_XGB * 100),
+            number={'suffix': '%'},
+            gauge={
+                'axis': {'range': [0, 100]},
+                'bar': {'color': '#e56a72' if r.SUGERENCIA == 'Rechazar' else '#e1bb63' if r.SUGERENCIA == 'Condicionar' else '#37d58e'},
+                'steps': [
+                    {'range': [0, float(M.corte_base * 100)], 'color': '#163b2d'},
+                    {'range': [float(M.corte_base * 100), float(r.CORTE * 100)], 'color': '#5f4a1f'},
+                    {'range': [float(r.CORTE * 100), 100], 'color': '#5a2730'}
+                ],
+                'threshold': {
+                    'line': {'color': '#ffffff', 'width': 4},
+                    'value': float(r.CORTE * 100)
+                }
+            }
+        ))
+        fig.update_layout(
+            height=300,
+            margin=dict(l=18, r=18, t=15, b=15),
+            paper_bgcolor='rgba(0,0,0,0)',
+            font_color='#e8f4ed'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption(
+            f'Zonas: aceptar bajo {M.corte_base:.2%} · condicionar entre {M.corte_base:.2%} y {r.CORTE:.2%} · rechazar sobre {r.CORTE:.2%}.'
+        )
+
+    with g2:
+        st.subheader('Distribución de PD en TEST')
+        hist = go.Figure()
+        hist.add_trace(go.Histogram(
+            x=M.scores['PD_XGB'],
+            nbinsx=35,
+            marker_color='#5d8cc9',
+            opacity=.75,
+            name='TEST',
+            histnorm='probability'
+        ))
+        hist.add_vline(
+            x=float(r.PD_XGB),
+            line_dash='solid',
+            line_color='#f07f8b' if r.SUGERENCIA == 'Rechazar' else '#f0c56b' if r.SUGERENCIA == 'Condicionar' else '#51d79a',
+            line_width=3
+        )
+        hist.add_vline(x=float(M.corte_base), line_dash='dash', line_color='#72e5a8', line_width=2)
+        hist.add_vline(x=float(r.CORTE), line_dash='dot', line_color='#ffffff', line_width=2)
+        hist.update_layout(
+            height=300,
+            xaxis_title='PD XGBoost',
+            yaxis_title='Proporción',
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#eaf3ed',
+            margin=dict(t=10, l=18, r=18, b=15),
+            showlegend=False
+        )
+        st.plotly_chart(hist, use_container_width=True)
+        st.caption('Línea sólida: esta solicitud · línea verde: corte de aceptación · línea blanca: corte de rechazo.')
+
+    # ========= Gráficas 2 =========
+    g3, g4 = st.columns([1.08, .92], gap='large')
+
+    with g3:
+        st.subheader('Endeudamiento y estructura del caso vs referencias')
+        campos = [
+            'DEBT_TO_INCOME', 'PAYMENT_TO_INCOME', 'REVOLVING_UTILIZATION',
+            'LOAN_TO_VALUE', 'DOWN_PAYMENT_PCT'
+        ]
+        etiquetas = [
+            'Deuda / ingreso', 'Pago / ingreso', 'Uso revolvente',
+            'Préstamo / valor', 'Enganche'
+        ]
+        caso = [float(r[c] * 100) for c in campos]
+        buenos = [float(train_good[c].median() * 100) for c in campos]
+        malos = [float(train_bad[c].median() * 100) for c in campos]
+
+        comp = go.Figure()
+        comp.add_trace(go.Bar(
+            name='Esta solicitud', y=etiquetas, x=caso,
+            orientation='h', marker_color='#78aaf5'
+        ))
+        comp.add_trace(go.Bar(
+            name='Mediana sin incumplimiento', y=etiquetas, x=buenos,
+            orientation='h', marker_color='#a8b1ac'
+        ))
+        comp.add_trace(go.Bar(
+            name='Mediana con incumplimiento', y=etiquetas, x=malos,
+            orientation='h', marker_color='#e4818c'
+        ))
+        comp.update_layout(
+            barmode='group',
+            height=360,
+            xaxis_title='Porcentaje (%)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#eaf3ed',
+            margin=dict(t=8, l=10, r=10, b=5),
+            legend=dict(orientation='h', y=1.13)
+        )
+        st.plotly_chart(comp, use_container_width=True)
+
+    with g4:
+        st.subheader('Perfil relativo del caso')
+        perfil_campos = ['DEBT_TO_INCOME', 'PAYMENT_TO_INCOME', 'REVOLVING_UTILIZATION', 'LOAN_TO_VALUE', 'DOWN_PAYMENT_PCT', 'MISSED_PAYMENTS_12M']
+        perfil_etiquetas = ['DTI', 'PTI', 'Uso revolvente', 'LTV', 'Enganche', 'Pagos omitidos']
+
+        caso_rel = []
+        bueno_rel = []
+        malo_rel = []
+
+        for c in perfil_campos:
+            base_good = float(train_good[c].median())
+            base_bad = float(train_bad[c].median())
+            if base_good == 0:
+                caso_rel.append(100.0)
+            else:
+                caso_rel.append(float(r[c] / base_good * 100))
+            bueno_rel.append(100.0)
+            malo_rel.append(100.0 if base_good == 0 else float(base_bad / base_good * 100))
+
+        perfil = go.Figure()
+        perfil.add_trace(go.Scatter(
+            x=perfil_etiquetas, y=caso_rel, mode='lines+markers',
+            line=dict(color='#7fb0ff', width=3), marker=dict(size=8), name='Solicitud / mediana buenos'
+        ))
+        perfil.add_trace(go.Scatter(
+            x=perfil_etiquetas, y=bueno_rel, mode='lines',
+            line=dict(color='#8fd7b1', dash='dash'), name='Referencia buenos = 100'
+        ))
+        perfil.add_trace(go.Scatter(
+            x=perfil_etiquetas, y=malo_rel, mode='lines+markers',
+            line=dict(color='#e17a86', width=2), marker=dict(size=7), name='Mediana incumplidos / buenos'
+        ))
+        perfil.update_layout(
+            height=360,
+            yaxis_title='Índice relativo (100 = mediana de buenos pagadores)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#eaf3ed',
+            margin=dict(t=8, l=10, r=10, b=25),
+            legend=dict(orientation='h', y=1.12)
+        )
+        st.plotly_chart(perfil, use_container_width=True)
+        st.caption('Valores por arriba de 100 indican que la solicitud está por encima de la mediana de buenos pagadores.')
+
+    # ========= Gráficas 3 =========
+    g5, g6 = st.columns([1, 1], gap='large')
+
+    with g5:
+        st.subheader('Ubicación de la solicitud dentro de TRAIN')
+        percentil_vars = [
+            ('DEBT_TO_INCOME', 'DTI'),
+            ('PAYMENT_TO_INCOME', 'PTI'),
+            ('REVOLVING_UTILIZATION', 'Uso revolvente'),
+            ('LOAN_TO_VALUE', 'LTV'),
+            ('DOWN_PAYMENT_PCT', 'Enganche')
+        ]
+        nombres = []
+        percentiles = []
+        colores = []
+        for var, nom in percentil_vars:
+            serie = M.train[var].dropna()
+            pct = float((serie <= float(r[var])).mean() * 100)
+            nombres.append(nom)
+            percentiles.append(pct)
+            colores.append('#e56a72' if pct >= 75 else '#e6bf66' if pct >= 40 else '#52d88f')
+
+        fig_pct = go.Figure(go.Bar(
+            x=percentiles, y=nombres, orientation='h',
+            marker_color=colores, text=[f'{x:.0f}%' for x in percentiles],
+            textposition='outside'
+        ))
+        fig_pct.update_layout(
+            height=310,
+            xaxis_title='Percentil dentro de TRAIN',
+            xaxis=dict(range=[0, 100]),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#eaf3ed',
+            margin=dict(t=5, l=12, r=18, b=8)
+        )
+        st.plotly_chart(fig_pct, use_container_width=True)
+        st.caption('Percentiles altos en DTI, PTI, LTV o uso revolvente suelen reflejar mayor presión financiera.')
+
+    with g6:
+        st.subheader('Resumen visual de decisión')
+        resumen = pd.DataFrame([
+            ['PD XGBoost', f'{r.PD_XGB:.1%}', f'Corte rechazo {r.CORTE:.1%}'],
+            ['PD Logit', f'{r.PD_LOGIT:.1%}', 'Modelo complementario'],
+            ['DTI', f'{r.DEBT_TO_INCOME:.1%}', f'Mediana buenos {dti_med_good:.1%}'],
+            ['Pago / ingreso', f'{r.PAYMENT_TO_INCOME:.1%}', f'Mediana buenos {pti_med_good:.1%}'],
+            ['Uso revolvente', f'{r.REVOLVING_UTILIZATION:.1%}', f'Mediana buenos {ru_med_good:.1%}'],
+            ['Préstamo / valor', f'{r.LOAN_TO_VALUE:.1%}', f'Mediana buenos {ltv_med_good:.1%}'],
+            ['Enganche', f'{r.DOWN_PAYMENT_PCT:.1%}', f'Mediana buenos {dp_med_good:.1%}'],
+            ['Incumplimiento histórico TRAIN', f'{hist_train:.2%}', 'No es límite ni recomendación']
+        ], columns=['Indicador', 'Solicitud', 'Referencia'])
+
+        st.dataframe(
+            resumen,
+            hide_index=True,
+            use_container_width=True,
+            height=310,
+            column_config={
+                'Indicador': st.column_config.TextColumn('Indicador', width='medium'),
+                'Solicitud': st.column_config.TextColumn('Solicitud', width='small'),
+                'Referencia': st.column_config.TextColumn('Referencia', width='medium')
+            }
+        )
+
+    # ========= Insights ejecutivos =========
+    st.subheader('Insights ejecutivos del caso')
+    insights = []
+
+    if r.PD_XGB >= r.CORTE:
+        insights.append(
+            f'La PD XGBoost ({r.PD_XGB:.1%}) rebasa el corte de rechazo ({r.CORTE:.1%}), por lo que la decisión propuesta es RECHAZAR.'
+        )
+    elif r.PD_XGB >= M.corte_base:
+        insights.append(
+            f'La PD XGBoost ({r.PD_XGB:.1%}) cae en zona intermedia, por eso el modelo propone CONDICIONAR.'
+        )
+    else:
+        insights.append(
+            f'La PD XGBoost ({r.PD_XGB:.1%}) está debajo del corte inferior ({M.corte_base:.1%}), por lo que el modelo propone ACEPTAR.'
+        )
+
+    insights.append(
+        f'El DTI es {r.DEBT_TO_INCOME:.1%}, {_pp_diff(float(r.DEBT_TO_INCOME), dti_med_good)} respecto a la mediana de buenos pagadores ({dti_med_good:.1%}).'
+    )
+    insights.append(
+        f'El uso revolvente es {r.REVOLVING_UTILIZATION:.1%}, {_pp_diff(float(r.REVOLVING_UTILIZATION), ru_med_good)} respecto a la referencia de buenos pagadores.'
+    )
+    insights.append(
+        f'El préstamo/valor (LTV) es {r.LOAN_TO_VALUE:.1%}, {_pp_diff(float(r.LOAN_TO_VALUE), ltv_med_good)} frente a la mediana de buenos pagadores.'
+    )
+    insights.append(
+        f'La PD de esta solicitud está {"por arriba" if r.PD_XGB > med_pd_test else "por debajo"} de la mediana de TEST ({med_pd_test:.1%}).'
+    )
+
+    for txt in insights:
+        st.markdown(f'- {txt}')
+
+    # ========= Expediente =========
+    with st.expander('Expediente y variables del modelo', expanded=False):
+        detalle = pd.DataFrame([
+            {
+                'Variable': LABELS[k],
+                'Solicitud': formato(k, r[k]),
+                'Mediana buenos pagadores (TRAIN)': formato(k, train_good[k].median()),
+                'Mediana con incumplimiento (TRAIN)': formato(k, train_bad[k].median())
+            }
+            for k in COLS
+        ])
+        st.dataframe(detalle, hide_index=True, use_container_width=True)
+        st.caption(
+            'Las referencias usan TRAIN. FINANCIAL_LITERACY_SCORE permanece en el modelo de 12 variables del ejercicio académico; '
+            'cualquier uso fuera del prototipo requiere evaluación formal de sesgos.'
+        )
+
+    if st.session_state.get('pending_choice') and str(st.session_state.pending_choice.get('loan_id')) == str(loan):
         override_dialog()
+
     footnote()
 
 elif page=='Mis indicadores':
