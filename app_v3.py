@@ -122,6 +122,9 @@ def override_dialog():
 
 def open_loan(loan):
     st.session_state['loan_actual']=str(loan)
+    # Evitar que una búsqueda anterior suplante el Loan ID seleccionado en P1.
+    st.session_state.pop('p2_buscar_loan', None)
+    st.session_state.pop('p2_selector_loan', None)
     st.session_state['page_to']='Ficha de solicitud'
     st.rerun()
 
@@ -133,6 +136,9 @@ def ask_decision(row,decision):
         st.rerun()
     st.session_state['pending_choice']={'loan_id':str(row.LOAN_ID),'choice':decision}
     st.session_state['loan_actual']=str(row.LOAN_ID)
+    # La excepción debe abrir exactamente el préstamo de la bandeja.
+    st.session_state.pop('p2_buscar_loan', None)
+    st.session_state.pop('p2_selector_loan', None)
     st.session_state['page_to']='Ficha de solicitud'
     st.rerun()
 
@@ -604,16 +610,27 @@ elif page=='Ficha de solicitud':
         signo = '+' if dif >= 0 else ''
         return f'{signo}{dif:.1f} pp'
 
+    # ========= Encabezado visible antes de los controles =========
+    st.markdown("""
+    <div class="ac-p2-head">
+      <div class="ac-p2-title">P2 · Ficha de solicitud</div>
+      <div class="ac-p2-sub">Busca un Loan ID original de TEST o abre el que
+      seleccionaste en la bandeja. El análisis utiliza XGBoost con 12 variables.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("**Consulta del expediente**")
+
     # ========= Selector de folio desde P2 =========
     actual_guardado = str(st.session_state.get('loan_actual') or '')
     cbar1, cbar2, cbar3 = st.columns([1.9, 1.25, .8], gap='small', vertical_alignment='bottom')
 
     with cbar1:
         buscar = st.text_input(
-            'Buscar Loan ID',
+            'Buscar Loan ID · original de TEST',
             value=actual_guardado,
             placeholder='Ej. 277432',
-            key='p2_buscar_loan'
+            key='p2_buscar_loan',
+            help='Escribe el identificador completo o parte de él. Solo se consultan solicitudes asignadas a tu perfil.'
         )
 
     coincidencias = all_cases.copy()
@@ -671,7 +688,7 @@ elif page=='Ficha de solicitud':
 
     st.markdown(f"""
     <div class="ac-p2-head">
-      <div class="ac-p2-title">P2 · Ficha de solicitud</div>
+      <div class="ac-p2-title">Análisis de la solicitud {html.escape(str(r.LOAN_ID))}</div>
       <div class="ac-p2-sub">
         <strong>Loan ID {html.escape(str(r.LOAN_ID))}</strong> · {html.escape(str(r.SEG_DTI))} ·
         Sugerencia del modelo: <strong>{html.escape(str(r.SUGERENCIA))}</strong>
