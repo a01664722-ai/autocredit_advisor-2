@@ -46,6 +46,11 @@ def initialize(corte:float):
         for seg in SEGMENTS:
             c.execute('INSERT OR IGNORE INTO policies(segment,threshold,author,changed_at) VALUES(?,?,?,?)',
                       (seg,float(corte),'Sistema',now()))
+        # Migración segura desde V2: solo políticas iniciales de Sistema
+        # sin modificaciones (version=1). Mantener intactos cambios gerenciales.
+        c.execute("""UPDATE policies SET threshold=?, changed_at=?
+                     WHERE author='Sistema' AND version=1 AND ABS(threshold-?)>0.0000001""",
+                  (float(corte), now(), float(corte)))
         for metric,val in [('Resueltas',10),('Con justificación',1.0),('Coincidencia con sugerencia',.8)]:
             c.execute('INSERT OR IGNORE INTO targets(metric,value) VALUES(?,?)',(metric,val))
 
