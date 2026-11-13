@@ -63,7 +63,7 @@ def render_login(personas: dict) -> None:
             <span class="ac0-pill">XGBoost · 12 variables</span>
             <span class="ac0-pill">Analistas</span>
             <span class="ac0-pill">Gerencia</span>
-            <span class="ac0-pill">Validación DTI</span>
+            <span class="ac0-pill">Soporte técnico</span>
           </div>
         </div>
         """,unsafe_allow_html=True)
