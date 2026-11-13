@@ -1,4 +1,4 @@
-"""Interfaz compartida de alertas DTI para analistas y especialista de validación."""
+"""Interfaz compartida de reportes para analistas y centro de Soporte."""
 from __future__ import annotations
 import html
 import pandas as pd
@@ -10,11 +10,11 @@ from src.ops_monitor import (
 from src.monthly_kpis import as_local
 
 
-@st.dialog("Reportar incidencia a soporte DTI",width="large")
+@st.dialog("Reportar incidencia a Soporte",width="large")
 def report_dti_dialog(analyst_id,score_df):
     st.markdown("**Notificar una falla del tablero o del modelo**")
     st.caption("Se abrirá un ticket real en esta instancia y se notificará en "
-               "las bandejas de soporte DTI y de gerencia.")
+               "las bandejas de Soporte y de gerencia.")
     with st.form(f"report_dti_{analyst_id}"):
         a,b=st.columns(2,gap="medium")
         with a:
@@ -27,7 +27,7 @@ def report_dti_dialog(analyst_id,score_df):
                 placeholder="Solo si se relaciona con un préstamo asignado")
         detail=st.text_area("Descripción de la falla*",max_chars=2000,height=165,
                 placeholder="¿Qué pantalla falló? ¿Qué esperabas ver? ¿Qué ocurrió?")
-        submitted=st.form_submit_button("Enviar alerta a DTI y gerencia",
+        submitted=st.form_submit_button("Enviar alerta a Soporte y gerencia",
                          type="primary",icon=":material/report_problem:",
                          use_container_width=True)
     if submitted:
@@ -50,30 +50,33 @@ def report_dti_dialog(analyst_id,score_df):
 def render_analyst_dti_sidebar(analyst_id,score_df):
     """Un solo botón discreto, fuera del flujo de decisiones crediticias."""
     st.caption("Soporte técnico")
-    if st.button("Reportar incidencia a DTI",icon=":material/report_problem:",
+    if st.button("Reportar falla a Soporte",icon=":material/report_problem:",
                  key=f"report_dti_open_{analyst_id}",use_container_width=True,
                  help="Reporta fallas de datos, predicción, métricas o interfaz. Se genera un ticket."):
         report_dti_dialog(analyst_id,score_df)
     reported=st.session_state.pop(f"dti_reported_{analyst_id}",None)
     if reported is not None:
-        st.success(f"Incidencia #{reported} registrada y enviada a DTI y gerencia.")
+        st.success(f"Incidencia #{reported} enviada a Soporte y gerencia.")
 
 
-def render_dti_incidents():
-    st.markdown('<div style="height:22px"></div>',unsafe_allow_html=True)
-    st.markdown("### Incidencias de soporte DTI")
-    st.caption("Alertas recibidas desde los dashboards de Adrián y Sofía. "
-               "Resolver una incidencia envía seguimiento a su analista y a gerencia.")
+def render_dti_incidents(show_heading=True,show_kpis=True):
+    """Bandeja compartida; permite incrustarla sin duplicar KPI en la portada."""
+    if show_heading:
+        st.markdown('<div style="height:16px"></div>',unsafe_allow_html=True)
+        st.markdown("### Incidencias de soporte")
+        st.caption("Reportes de Adrián y Sofía; al resolverlos se avisa "
+                   "al analista y a gerencia.")
     current=incidents(limit=100000)
     summary=incident_month_summary(current)
-    x,y,z,w=st.columns(4,gap="small")
-    x.metric("Reportadas este mes",summary["total"])
-    y.metric("Abiertas",summary["open"])
-    z.metric("En revisión",summary["review"])
-    w.metric("Resueltas",summary["solved"])
-    st.caption(f"Resolución de incidencias creadas este mes: "
-               f"{summary['rate']:.1%}" if summary["rate"] is not None
-               else "Sin incidencias este mes; tasa de resolución no evaluable.")
+    if show_kpis:
+        x,y,z,w=st.columns(4,gap="small")
+        x.metric("Reportadas este mes",summary["total"])
+        y.metric("Abiertas",summary["open"])
+        z.metric("En revisión",summary["review"])
+        w.metric("Resueltas",summary["solved"])
+        st.caption(f"Resolución de incidencias creadas este mes: "
+                   f"{summary['rate']:.1%}" if summary["rate"] is not None
+                   else "Sin incidencias este mes; tasa de resolución no evaluable.")
 
     a,b=st.columns([1.1,2],gap="medium")
     with a:
