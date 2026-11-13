@@ -16,7 +16,10 @@ from src import store
 from src.monthly_kpis import monthly_summary, level
 from src.kpi_views import render_analyst_month, render_manager_month
 from src.message_views import render_messages
-from src.profile_state import reset_profile_navigation
+from src.profile_state import (
+    reset_profile_navigation, demo_current_profile, demo_sign_out
+)
+from src.login_view import render_login
 
 st.set_page_config(page_title='AutoCredit Advisor | Equipo 3', page_icon=':material/finance:', layout='wide')
 st.markdown('''<style>
@@ -46,6 +49,13 @@ PERSONAS={
  'Especialista · Validación DTI':('dti',None,'Especialista DTI'),
 }
 METRICAS_OBJ={'Resueltas':'Casos resueltos','Con justificación':'Excepciones justificadas','Coincidencia con sugerencia':'Coincidencia modelo–analista'}
+
+# Pantalla 0: acceso demo primero, SIN entrenar el modelo hasta entrar al dashboard.
+# Este flujo no autentica identidades; es solo navegación por roles académicos.
+selected_profile = demo_current_profile(st.session_state, PERSONAS)
+if selected_profile is None:
+    render_login(PERSONAS)
+    st.stop()
 
 @st.cache_resource(show_spinner='Entrenando XGBoost y Logit exclusivamente con TRAIN…')
 def artefactos():
@@ -148,8 +158,8 @@ def ask_decision(row,decision):
 
 with st.sidebar:
     st.markdown('### AutoCredit Advisor')
-    selected=st.selectbox('Perfil de demostración*',list(PERSONAS),key='perfil',help='El selector demuestra roles: NO es autenticación de producción.')
-    role,analyst_id,name=PERSONAS[selected]
+    # El rol se elige únicamente en la pantalla de acceso, no en la barra lateral.
+    role,analyst_id,name=PERSONAS[selected_profile]
     # No reutilizar Loan ID, filtros ni decisiones pendientes de otro perfil.
     # La bitácora SQLite permanece intacta y cada analista conserva sus casos.
     reset_profile_navigation(st.session_state, role, analyst_id)
@@ -176,6 +186,12 @@ with st.sidebar:
     st.caption(f'XGBoost · 12 variables · aceptar < {M.corte_base:.2%} · rechazar ≥ {M.corte_rechazo:.2%} (base)')
     st.caption('Demostración académica. No utilizar para aprobar créditos reales.')
     if st.button('Actualizar',icon=':material/refresh:',use_container_width=True):st.rerun()
+    st.divider()
+    if st.button('Cerrar sesión',icon=':material/logout:',
+                 use_container_width=True,type='secondary',key='ac_logout_sidebar'):
+        # Solo se limpia el estado de este navegador; no afecta la bitácora SQLite.
+        demo_sign_out(st.session_state)
+        st.rerun()
 
 page=st.session_state.page
 
