@@ -44,6 +44,12 @@ def initialize(corte:float):
             body TEXT NOT NULL, created_at TEXT NOT NULL, seen INTEGER NOT NULL DEFAULT 0);
         CREATE TABLE IF NOT EXISTS targets(metric TEXT PRIMARY KEY, value REAL NOT NULL);
         ''')
+        # Seguimiento operativo: incidencias DTI y sesiones cerradas.
+        from src.ops_monitor import ensure_tables
+        ensure_tables(c)
+        # KPI DTI: proporción resuelta de incidencias reportadas en el mes.
+        c.execute("INSERT OR IGNORE INTO targets(metric,value) VALUES(?,?)",
+                  ("Resolución DTI mensual", 0.99))
         # Migración compatible: las alertas históricas siguen en messages.
         # Los mensajes manuales incorporan remitente, destinatario y relación de respuesta.
         columns={row['name'] for row in c.execute('PRAGMA table_info(messages)')}
