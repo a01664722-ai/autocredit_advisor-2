@@ -222,7 +222,7 @@ def render_manager_overview(scores=None):
             _fig(fig,410)
         with right:
             fig=go.Figure()
-             for aid in chosen_ids:
+            for aid in chosen_ids:
                 stats=team["individuals"][aid]
                 days=np.arange(1,stats["month_days"]+1)
                 curve=[v if idx<stats["day"] else None for idx,v in enumerate(stats["cumulative"])]
