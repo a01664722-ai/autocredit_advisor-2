@@ -1,4 +1,4 @@
-"""Seguimiento operativo académico: incidencias DTI y sesiones con inicio/cierre registrados.
+"""Seguimiento operativo académico: incidencias de Soporte y sesiones con inicio/cierre registrados.
 
 No confundir tiempos de sesión con productividad activa. Todo se guarda en SQLite
 local, no hay autenticación real ni persistencia garantizada en Streamlit Cloud.
@@ -24,7 +24,7 @@ PROFILE_KEYS=(
     ("analista","A-017","Adrián Pérez"),
     ("analista","A-022","Sofía Reyes"),
     ("gerente",None,"Mariana Torres"),
-    ("dti",None,"Especialista DTI"),
+    ("dti",None,"Especialista de Soporte"),
 )
 
 
@@ -83,15 +83,15 @@ def create_incident(analyst_id,category,title,details,priority="Normal",loan_id=
             VALUES(?,?,?,?,?,?, 'Abierto',?,?)""",
             (analyst_id,category,title,details,loan_id or None,priority,timestamp,timestamp))
         incident_id=c.execute("SELECT last_insert_rowid()").fetchone()[0]
-        summary=(f"Incidencia DTI #{incident_id} · {analyst_id} · {category}"
+        summary=(f"Incidencia de Soporte #{incident_id} · {analyst_id} · {category}"
                  + (f" · Loan ID {loan_id}" if loan_id else "")
                  + f"\n{title}\n{details[:400]}")
         for audience in ("dti","gerente"):
             c.execute("""INSERT INTO messages(audience,analyst_id,kind,title,body,created_at,
                         sender_role,sender_id,sender_name,priority)
                         VALUES(?,?,?,?,?,?,?,?,?,?)""",
-                    (audience,None,"Incidencia DTI",
-                     f"Incidencia DTI #{incident_id}: {title}",
+                    (audience,None,"Incidencia de Soporte",
+                     f"Incidencia de Soporte #{incident_id}: {title}",
                      summary,timestamp,"analista",analyst_id,
                      "Adrián Pérez" if analyst_id=="A-017" else "Sofía Reyes",priority))
     return incident_id
@@ -111,7 +111,7 @@ def incidents(limit=500,analyst_id=None):
         return [dict(row) for row in rows]
 
 
-def change_incident(incident_id,new_status,resolution_note="",handler="Especialista DTI"):
+def change_incident(incident_id,new_status,resolution_note="",handler="Especialista de Soporte"):
     from src import store
     if new_status not in STATES:
         raise ValueError("Estado desconocido")
@@ -131,12 +131,12 @@ def change_incident(incident_id,new_status,resolution_note="",handler="Especiali
         c.execute("""UPDATE dti_incidents SET status=?, resolution_note=?,
                      resolved_at=?, updated_at=? WHERE id=?""",
                   (new_status,note if new_status=="Resuelto" else "",resolved,stamp,int(incident_id)))
-        message=(f"Incidencia DTI #{incident_id} · {new_status}. {previous['title']}"
+        message=(f"Incidencia de Soporte #{incident_id} · {new_status}. {previous['title']}"
                  + (f"\nResolución: {note}" if new_status=="Resuelto" else ""))
         for audience,aid in (("analista",previous["analyst_id"]),("gerente",None)):
             c.execute("""INSERT INTO messages(audience,analyst_id,kind,title,body,created_at,
                          sender_role,sender_id,sender_name,priority) VALUES(?,?,?,?,?,?,?,?,?,?)""",
-                      (audience,aid,"DTI seguimiento",
+                      (audience,aid,"Soporte seguimiento",
                        f"Incidencia #{incident_id} · {new_status}",message,stamp,
                        "dti",None,handler,"Normal"))
     return True
