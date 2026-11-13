@@ -15,7 +15,7 @@ DESTINATIONS=(
     ("gerente",None,"Gerencia · Mariana Torres"),
     ("analista","A-017","Analista · Adrián Pérez (A-017)"),
     ("analista","A-022","Analista · Sofía Reyes (A-022)"),
-    ("dti",None,"Soporte DTI · Validación del modelo"),
+    ("dti",None,"Soporte · Modelo y tablero"),
 )
 DEST_BY_TOKEN={
     f"{role}|{aid or '-'}":(role,aid,label)
