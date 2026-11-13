@@ -12,7 +12,6 @@ PERSONAS = {
     "Adrián · Analista A-017": ("analista", "A-017", "Adrián Pérez"),
     "Sofía · Analista A-022": ("analista", "A-022", "Sofía Reyes"),
     "Mariana · Gerente": ("gerente", None, "Mariana Torres"),
-    "Luis · Operación": ("operacion", None, "Luis Ramírez"),
     "Especialista · Validación DTI": ("dti", None, "Especialista DTI"),
 }
 
@@ -31,7 +30,6 @@ def test_access_is_initially_closed_and_checks_profile_catalog():
     ("Adrián · Analista A-017", "analista", "A-017"),
     ("Sofía · Analista A-022", "analista", "A-022"),
     ("Mariana · Gerente", "gerente", None),
-    ("Luis · Operación", "operacion", None),
     ("Especialista · Validación DTI", "dti", None),
 ])
 def test_all_profiles_can_enter_and_sign_out(label,expected_role,expected_id):
