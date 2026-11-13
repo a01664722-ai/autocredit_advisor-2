@@ -23,7 +23,7 @@ DEST_BY_TOKEN={
 }
 STYLE="""
 <style>
-.ac-mail-intro{margin:0 0 .8rem 0}
+.ac-mail-intro{margin:22px 0 .8rem 0}
 .ac-mail-eyebrow{color:#70e6ac;font-size:.75rem;font-weight:800;letter-spacing:.12em}
 .ac-mail-title{font-size:1.86rem;color:#f2f9f4;line-height:1.24;font-weight:820;
   letter-spacing:-.035em;margin:.18rem 0}
@@ -194,6 +194,8 @@ def render_messages(role,analyst_id,name):
     with action:
         if st.button("Nuevo mensaje",type="primary",icon=":material/edit_square:",
                      use_container_width=True,key=f"{prefix}_compose_start"):
+            # Nuevo mensaje no debe reutilizar asunto, destinatario ni reply_to anterior.
+            st.session_state[f"{prefix}_reset"]=True
             st.session_state[f"{prefix}_navigate"]="Redactar"
             st.rerun()
 
