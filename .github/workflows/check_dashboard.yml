@@ -1,9 +1,9 @@
 name: Verificar interfaz y KPIs
 on:
   push:
-    branches: [juan-kpis-20261105, entrega4-seguimiento, ux-juan-tableros-20261107]
+    branches: [juan-kpis-20261105, entrega4-seguimiento, ux-juan-tableros-20261107, v3-integracion-xgboost-12v]
   pull_request:
-    branches: [entrega4-seguimiento]
+    branches: [entrega4-seguimiento, v2-xgboost-prueba]
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -13,5 +13,5 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt -r requirements-dev.txt
-      - run: python -m compileall -q app.py src vistas
+      - run: python -m compileall -q app.py app_v2.py app_v3.py src vistas
       - run: python -m pytest -q
