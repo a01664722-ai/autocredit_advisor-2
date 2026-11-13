@@ -66,5 +66,5 @@ def test_manager_navigation_and_access_audit():
     assert len(ACCESS)==4
     assert {x[0] for x in ACCESS}=={
         "Mariana Torres","Adrián Pérez","Sofía Reyes",
-        "Especialista DTI"
+        "Especialista de Soporte"
     }
