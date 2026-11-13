@@ -20,9 +20,6 @@ ACCESS = (
     ("Especialista DTI", "Validación y soporte", "DT",
      "Incidencias DTI · Validación del modelo · Mensajes · Auditoría",
      "Consultar métricas técnicas de TEST y documentar resolución de incidencias."),
-    ("Luis Ramírez", "Operación", "LR",
-     "Operación · Validación del modelo",
-     "Consultar el resumen operativo y las métricas agregadas del modelo."),
 )
 
 CSS = """
