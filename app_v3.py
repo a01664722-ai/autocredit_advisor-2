@@ -15,6 +15,7 @@ from src.engine import bases, entrenar, COLS, LABELS, PERCENT, formato, sugerenc
 from src import store
 from src.monthly_kpis import monthly_summary, level
 from src.kpi_views import render_analyst_month, render_manager_month
+from src.message_views import render_messages
 
 st.set_page_config(page_title='AutoCredit Advisor | Equipo 3', page_icon=':material/finance:', layout='wide')
 st.markdown('''<style>
@@ -149,14 +150,14 @@ with st.sidebar:
     selected=st.selectbox('Perfil de demostración*',list(PERSONAS),key='perfil',help='El selector demuestra roles: NO es autenticación de producción.')
     role,analyst_id,name=PERSONAS[selected]
     st.caption(f'{name} · {role.title()}')
-    if role in ('analista','gerente'):
+    if role in ('analista','gerente','dti'):
         n=store.unread(role,analyst_id)
         if st.button(f'Mensajes ({n})',icon=':material/mail:',use_container_width=True):
             st.session_state['page_to']='Mensajes'
             st.rerun()
     if role=='analista':pages=['Bandeja','Ficha de solicitud','Mis indicadores','Mensajes']
     elif role=='gerente':pages=['Política y cartera','Analistas y KPI','Mensajes','Recorridos y gobierno']
-    elif role=='dti':pages=['Validación del modelo','Recorridos y gobierno']
+    elif role=='dti':pages=['Validación del modelo','Mensajes','Recorridos y gobierno']
     else:pages=['Operación','Validación del modelo']
     if 'page' not in st.session_state or st.session_state.page not in pages:
         st.session_state.page=pages[0]
@@ -175,19 +176,9 @@ with st.sidebar:
 page=st.session_state.page
 
 if page=='Mensajes':
-    st.title(f'Mensajes · {name}')
-    items=store.messages(role,analyst_id)
-    strip_metrics([('Mensajes sin leer',str(store.unread(role,analyst_id)),'Alertas dentro de esta demo','warn'),
-                   ('Mensajes totales',str(len(items)),'Últimos 50 eventos','')])
-    if not items:st.info('Sin mensajes por ahora. Los cambios de política y las excepciones aparecerán aquí.')
-    for x in items:
-        with st.container(border=True):
-            st.markdown(f'**{x["title"]}**'+(' · Sin leer' if not x['seen'] else ' · Leído'))
-            st.caption(x['created_at'])
-            st.write(x['body'])
-            if not x['seen'] and st.button('Marcar como leído',key=f'msg_{x["id"]}'):
-                store.mark_read(x['id'],role,analyst_id);st.rerun()
-    footnote();st.stop()
+    render_messages(role,analyst_id,name)
+    footnote()
+    st.stop()
 
 
 if page == 'Bandeja':
