@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
 import os
+from src.monthly_kpis import KPI_SPECS, validate_target
 
 DB=Path(os.getenv('AUTOCREDIT_DB','/tmp/autocredit_v2_demo.sqlite3'))
 SEGMENTS=('General','DTI bajo','DTI medio','DTI alto')
@@ -51,8 +52,11 @@ def initialize(corte:float):
         c.execute("""UPDATE policies SET threshold=?, changed_at=?
                      WHERE author='Sistema' AND version=1 AND ABS(threshold-?)>0.0000001""",
                   (float(corte), now(), float(corte)))
+        # Mantener metas heredadas y crear las seis nuevas metas mensuales.
         for metric,val in [('Resueltas',10),('Con justificación',1.0),('Coincidencia con sugerencia',.8)]:
             c.execute('INSERT OR IGNORE INTO targets(metric,value) VALUES(?,?)',(metric,val))
+        for metric, _label, _kind, default, _desc in KPI_SPECS:
+            c.execute('INSERT OR IGNORE INTO targets(metric,value) VALUES(?,?)',(metric,float(default)))
 
 def policy(segment):
     with db() as c:
@@ -125,7 +129,38 @@ def mark_read(msg_id,audience,analyst_id=None):
 def targets():
     with db() as c:return {x['metric']:x['value'] for x in c.execute('SELECT * FROM targets')}
 
+def set_targets_batch(changes, author='Gerencia', analyst_ids=('A-017', 'A-022')):
+    """Actualiza metas mensuales de forma atómica; notifica a cada analista.
+    La confirmación explícita se solicita en la interfaz ANTES de esta función.
+    """
+    clean = {metric: validate_target(metric, value) for metric, value in changes.items()}
+    if not clean:
+        return False
+    with db() as c:
+        old = {x['metric']:float(x['value']) for x in c.execute('SELECT metric,value FROM targets')}
+        changed = {key:(old[key], val) for key,val in clean.items()
+                   if key in old and abs(old[key] - val)>1e-10}
+        if not changed:
+            return False
+        for key, (_before, val) in changed.items():
+            c.execute('UPDATE targets SET value=? WHERE metric=?',(val,key))
+        from src.monthly_kpis import KPI_MAP
+        def displayed(metric, val):
+            return f'{val:.0%}' if KPI_MAP[metric][2] == 'rate' else f'{val:,.0f}'
+        details = '; '.join(
+            f'{KPI_MAP[key][1]}: {displayed(key, before)} → {displayed(key, after)}'
+            for key,(before,after) in changed.items())
+        for analyst_id in analyst_ids:
+            c.execute('''INSERT INTO messages(audience,analyst_id,kind,title,body,created_at)
+                         VALUES(?,?,?,?,?,?)''',
+                      ('analista', analyst_id, 'KPI',
+                       'Metas mensuales actualizadas por gerencia',
+                       f'{author} actualizó las metas operativas mensuales. {details}. '
+                       'Consulta Mis indicadores para ver el avance y el semáforo.',
+                       now()))
+    return True
+
+
 def set_target(metric,value):
-    if metric not in ('Resueltas','Con justificación','Coincidencia con sugerencia'):raise ValueError('KPI no autorizado')
-    if value<0 or (metric!='Resueltas' and value>1):raise ValueError('Meta inválida')
-    with db() as c:c.execute('UPDATE targets SET value=? WHERE metric=?',(float(value),metric))
+    """Compatibilidad: actualizar una sola meta mensual y notificar."""
+    return set_targets_batch({metric:value})
