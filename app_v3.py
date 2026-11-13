@@ -13,6 +13,8 @@ from sklearn.calibration import calibration_curve
 
 from src.engine import bases, entrenar, COLS, LABELS, PERCENT, formato, sugerencia
 from src import store
+from src.monthly_kpis import monthly_summary, level
+from src.kpi_views import render_analyst_month, render_manager_month
 
 st.set_page_config(page_title='AutoCredit Advisor | Equipo 3', page_icon=':material/finance:', layout='wide')
 st.markdown('''<style>
@@ -267,51 +269,25 @@ if page == 'Bandeja':
     pendientes = total - resueltas
     priorizadas = int(todos['SUGERENCIA'].eq('Rechazar').sum())
 
-    # Metas compartidas con Mariana (gerencia). Se leen de SQLite, no se inventan.
-    # 'Resueltas' es el identificador existente; en la siguiente iteración de
-    # gerencia se renombrará a 'Decisiones por día' y se agregará confirmación.
-    from datetime import datetime, timezone
-    from zoneinfo import ZoneInfo
-
+    # KPI mensuales: fuente única del estado gerencial y decisiones registradas.
     metas_gerencia = store.targets()
-    meta_diaria = max(1, int(round(float(metas_gerencia.get('Resueltas', 10)))))
-    meta_justificacion = float(metas_gerencia.get('Con justificación', 1.0))
-
-    hoy_local = datetime.now(ZoneInfo('America/Mexico_City')).date()
-    decisiones_hoy = 0
-    excepciones_hoy = 0
-    justificadas_hoy = 0
-    for d in decisiones.values():
-        try:
-            marca = datetime.fromisoformat(str(d.get('updated_at', '')))
-            if marca.tzinfo is None:
-                marca = marca.replace(tzinfo=timezone.utc)
-            if marca.astimezone(ZoneInfo('America/Mexico_City')).date() != hoy_local:
-                continue
-        except (ValueError, TypeError):
-            continue
-        decisiones_hoy += 1
-        if int(d.get('override', 0)):
-            excepciones_hoy += 1
-            if str(d.get('motivo') or '').strip() and len(str(d.get('text_detail') or '').strip()) >= 8:
-                justificadas_hoy += 1
-
-    avance_diario = decisiones_hoy / meta_diaria
-    semaforo_diario = 'met' if avance_diario >= 1 else 'mid' if avance_diario >= .5 else 'low'
-    if excepciones_hoy:
-        tasa_justificacion = justificadas_hoy / excepciones_hoy
-        semaforo_justificacion = (
-            'met' if tasa_justificacion >= meta_justificacion
-            else 'mid' if tasa_justificacion >= .5 * meta_justificacion else 'low'
-        )
-        valor_justificacion = f'{tasa_justificacion:.0%}'
-        detalle_justificacion = (
-            f'{justificadas_hoy} de {excepciones_hoy} excepciones · meta {meta_justificacion:.0%}'
-        )
+    mensual = monthly_summary(decisiones, analyst_id)
+    meta_mensual = float(metas_gerencia.get("Decisiones mensuales", 50))
+    decisiones_mes = mensual["count"]
+    avance_mes = decisiones_mes / meta_mensual
+    semaforo_mes = level(decisiones_mes, meta_mensual)
+    meta_justificacion = float(metas_gerencia.get("Con justificación", 1.0))
+    tasa_justificacion = mensual["metrics"]["Con justificación"]
+    semaforo_justificacion = level(tasa_justificacion, meta_justificacion)
+    if tasa_justificacion is None:
+        valor_justificacion = "—"
+        detalle_justificacion = f"Sin excepciones en el mes · meta {meta_justificacion:.0%}"
     else:
-        semaforo_justificacion = 'na'
-        valor_justificacion = '—'
-        detalle_justificacion = f'Sin excepciones hoy · meta {meta_justificacion:.0%}'
+        valor_justificacion = f"{tasa_justificacion:.0%}"
+        detalle_justificacion = (
+            f'{mensual["justified"]} de {mensual["overrides"]} excepciones · '
+            f'meta mensual {meta_justificacion:.0%}'
+        )
 
     st.markdown(f"""
     <div class="ac-p1-head">
@@ -325,10 +301,10 @@ if page == 'Bandeja':
         <div class="number">{total:,}</div><div class="detail">Registros de TEST bajo este perfil*</div></div>
       <div class="ac-p1-kpi amber"><div class="name">Pendientes de decisión</div>
         <div class="number">{pendientes:,}</div><div class="detail">Aún sin decisión registrada</div></div>
-      <div class="ac-p1-kpi {semaforo_diario}"><div class="name">Decisiones registradas hoy</div>
-        <div class="number">{decisiones_hoy:,} / {meta_diaria:,}</div>
-        <div class="detail">Meta diaria fijada por gerencia · {avance_diario:.0%} de avance*</div></div>
-      <div class="ac-p1-kpi {semaforo_justificacion}"><div class="name">Excepciones justificadas hoy</div>
+      <div class="ac-p1-kpi {semaforo_mes}"><div class="name">Decisiones registradas · mes</div>
+        <div class="number">{decisiones_mes:,} / {int(meta_mensual):,}</div>
+        <div class="detail">Meta mensual de gerencia* · {avance_mes:.0%} de avance</div></div>
+      <div class="ac-p1-kpi {semaforo_justificacion}"><div class="name">Excepciones justificadas · mes</div>
         <div class="number">{valor_justificacion}</div>
         <div class="detail">{detalle_justificacion}*</div></div>
     </div>
@@ -1084,19 +1060,7 @@ elif page=='Ficha de solicitud':
     footnote()
 
 elif page=='Mis indicadores':
-    st.title('Mis indicadores · Analista')
-    all_cases=rated(M.scores[M.scores.ANALISTA_ID==analyst_id])
-    recent=store.decisions_map(analyst_id)
-    num=len(recent);override=sum(int(x['override']) for x in recent.values())
-    matches=num-override
-    strip_metrics([('Resueltas',str(num),'Registros guardados','good' if num else ''),
-                   ('Pendientes',f'{len(all_cases)-num:,}','Asignadas en TEST*','warn'),
-                   ('Coincidencia',f'{matches/num:.1%}' if num else '—','Solo decisiones registradas',''),
-                   ('Excepciones',str(override),'Todas requieren justificación','bad' if override else '')])
-    st.caption('Las métricas son decisiones registradas en SQLite; sin fechas reales de recepción no se inventan tiempo de atención ni productividad por hora. Las asignaciones de analistas son simuladas.')
-    if recent:
-        st.dataframe(pd.DataFrame(recent.values())[['loan_id','decision','suggested','override','motivo','updated_at']].rename(columns={
-            'loan_id':'Loan ID','decision':'Decisión','suggested':'Sugerencia','override':'Excepción','motivo':'Motivo','updated_at':'Registrada'}),hide_index=True,use_container_width=True)
+    render_analyst_month(name, analyst_id, M.scores)
     footnote()
 
 elif page=='Política y cartera':
@@ -1162,42 +1126,7 @@ elif page=='Política y cartera':
     footnote()
 
 elif page=='Analistas y KPI':
-    st.title('Gestión de analistas y KPI')
-    st.caption('Ranking descriptivo de decisiones registradas por analista. Avatares de iniciales (no fotografías reales); las asignaciones son de demostración.')
-    actions=pd.DataFrame(store.decisions())
-    targets=store.targets()
-    profiles=[('Adrián Pérez','A-017','AP'),('Sofía Reyes','A-022','SR')]
-    rows=[]
-    for person,aid,initials in profiles:
-        sub=actions[actions.analyst_id==aid] if len(actions) else pd.DataFrame()
-        n=len(sub)
-        overrides=int(sub.override.sum()) if n else 0
-        coinc=(n-overrides)/n if n else float('nan')
-        just=1.0 if n and (sub.loc[sub.override==1,'motivo'].fillna('')!='').all() else (float('nan') if not n or not overrides else 0.0)
-        rows.append({'Analista':person,'ID':aid,'Resueltas':n,'Coincidencia con sugerencia':coinc,
-                     'Con justificación':just,'Excepciones':overrides})
-    per=pd.DataFrame(rows)
-    f1,f2=st.columns(2)
-    for box,(person,aid,initials) in zip([f1,f2],profiles):
-        ri=per[per.ID==aid].iloc[0]
-        with box.container(border=True):
-            st.markdown(f'<div style="display:flex;align-items:center;gap:12px"><div style="background:#253b32;color:#74e7b0;border-radius:50%;height:47px;width:47px;display:grid;place-items:center;font-weight:800">{initials}</div><div><b>{person}</b><div class="helper">Analista {aid} · identidad simulada*</div></div></div>',unsafe_allow_html=True)
-            st.metric('Decisiones registradas',int(ri.Resueltas))
-            st.caption(f'Coincidencia: {ri["Coincidencia con sugerencia"]:.1%}' if ri.Resueltas else 'Sin decisiones registradas')
-    st.subheader('Clasificación por indicador')
-    sel=st.selectbox('KPI para comparar',list(METRICAS_OBJ),format_func=lambda k:METRICAS_OBJ[k])
-    val=targets[sel]
-    default_max=500 if sel=='Resueltas' else 1.0
-    new=st.number_input('Meta vigente',min_value=0.0,max_value=float(default_max),value=float(val),step=1.0 if sel=='Resueltas' else .05,format='%.0f' if sel=='Resueltas' else '%.2f')
-    if st.button('Guardar meta KPI',icon=':material/save:'):store.set_target(sel,new);st.rerun()
-    ranked=per.sort_values(sel,ascending=False,na_position='last')
-    cmp=ranked[['Analista','ID',sel]].copy()
-    cmp['Estado vs meta']=cmp[sel].apply(lambda x:'Sin información' if pd.isna(x) else ('En meta' if x>=new else 'Bajo meta'))
-    st.dataframe(cmp,hide_index=True,use_container_width=True, column_config={sel:st.column_config.NumberColumn(METRICAS_OBJ[sel],format='%d' if sel=='Resueltas' else '%.1f')})
-    st.caption('El orden representa volumen o cumplimiento de procedimiento, NO calidad crediticia ni evaluación laboral válida. Se requiere seguimiento real de resultados; no se atribuyen puntuaciones ficticias.')
-    with st.expander('Auditoría de decisiones y excepciones'):
-        if len(actions):st.dataframe(actions[['loan_id','analyst_id','decision','suggested','override','motivo','updated_at']],hide_index=True,use_container_width=True)
-        else:st.info('Aún no hay decisiones guardadas.')
+    render_manager_month(name)
     footnote()
 
 elif page=='Operación':
