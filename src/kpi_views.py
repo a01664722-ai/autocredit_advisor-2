@@ -8,6 +8,7 @@ import streamlit as st
 
 from src.monthly_kpis import KPI_SPECS, KPI_MAP, monthly_summary, level, progress, fmt
 from src import store
+from src.analyst_palette import analyst_color, GOAL_COLOR
 
 ANALYSTS=(("Adrián Pérez","A-017","AP"),("Sofía Reyes","A-022","SR"))
 COLOR={"met":"#56dca0","mid":"#f2c46e","low":"#ee9ba5","na":"#b0bdb5"}
@@ -277,17 +278,20 @@ def render_manager_month(manager):
     ranked=pd.DataFrame(ranks).sort_values("_sort",ascending=False)
     st.dataframe(ranked.drop(columns="_sort"),hide_index=True,use_container_width=True)
     fig=go.Figure()
-    fig.add_trace(go.Bar(x=[x[0] for x in ANALYSTS],
-               y=[summaries[x[1]]["metrics"][selected] *
-                  (100 if KPI_MAP[selected][2]=="rate" else 1) if
-                  summaries[x[1]]["metrics"][selected] is not None else None for x in ANALYSTS],
-               name="Registrado",marker_color="#55d7a4"))
-    reference=goal*(100 if KPI_MAP[selected][2]=="rate" else 1)
-    fig.add_hline(y=reference,line_dash="dash",line_color="#f0c46e",
+    mult=100 if KPI_MAP[selected][2]=="rate" else 1
+    for person,aid,_ in ANALYSTS:
+        value=summaries[aid]["metrics"][selected]
+        fig.add_trace(go.Bar(
+            x=[person.split()[0]],y=[value*mult if value is not None else None],
+            name=person.split()[0],marker_color=analyst_color(aid),
+            text=[f"{value*mult:.1f}" if value is not None else "—"],
+            textposition="outside"))
+    reference=goal*mult
+    fig.add_hline(y=reference,line_dash="dash",line_color=GOAL_COLOR,
                   annotation_text="Meta gerencial")
     fig.update_layout(yaxis_title="Porcentaje (%)" if KPI_MAP[selected][2]=="rate" else "Solicitudes",
-                      showlegend=False)
-    _chart(fig,300)
+                      showlegend=True)
+    _chart(fig,390)
 
     st.markdown("### Metas que controla gerencia")
     st.caption("Todas son mensuales y aplican a cada analista. Los tres KPI de riesgo "
@@ -331,7 +335,8 @@ def render_manager_month(manager):
             d=summaries[aid]
             fig.add_trace(go.Scatter(x=days,
                 y=[v if i<d["day"] else None for i,v in enumerate(d["cumulative"])],
-                mode="lines+markers",name=person,marker=dict(size=5)))
+                mode="lines+markers",name=person,marker=dict(size=5),
+                line=dict(color=analyst_color(aid),width=3)))
         fig.update_layout(title="Decisiones acumuladas del mes",xaxis_title="Día",
                           yaxis_title="Solicitudes distintas")
         _chart(fig,320)
@@ -345,7 +350,7 @@ def render_manager_month(manager):
         for person,aid,_ in ANALYSTS:
             subset=[x for x in report if x[0]==person]
             fig.add_trace(go.Bar(x=["Alto","Medio","Bajo"],y=[x[2] for x in subset],
-                                 name=person))
+                                 name=person,marker_color=analyst_color(aid)))
         fig.update_layout(title="Casos atendidos por nivel XGBoost",barmode="group",
                           yaxis_title="Solicitudes del mes")
         _chart(fig,320)
