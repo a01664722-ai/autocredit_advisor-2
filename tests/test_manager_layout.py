@@ -63,8 +63,8 @@ def test_manager_navigation_and_access_audit():
     assert "Recorridos, controles y gobierno" not in app
     assert "orientation=\"h\"" in mgr
     assert "xaxis_tickangle=-20" not in mgr
-    assert len(ACCESS)==5
+    assert len(ACCESS)==4
     assert {x[0] for x in ACCESS}=={
         "Mariana Torres","Adrián Pérez","Sofía Reyes",
-        "Especialista DTI","Luis Ramírez"
+        "Especialista DTI"
     }
