@@ -73,15 +73,35 @@ def _metric_card(spec, value, goal, note=""):
     )
 
 
-def _chart(fig,height=315):
+def format_kpi_chart(fig,height=340):
+    """Leyenda bajo los ejes, nunca superpuesta al título ni a los datos."""
+    import plotly.graph_objects as go
+    has_pie=any(isinstance(trace,go.Pie) for trace in fig.data)
+    legend=fig.layout.showlegend
+    if legend is None:
+        legend=len(fig.data)>1 or has_pie
     fig.update_layout(
-        height=height,margin=dict(l=16,r=16,t=30,b=20),
+        height=max(height,390) if legend else max(height,345),
+        margin=dict(l=35,r=25,t=65,b=115 if legend else 60),
         paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#dceae1",size=12),legend=dict(orientation="h",y=1.14),
-        xaxis=dict(gridcolor="rgba(145,169,151,.10)",zeroline=False),
-        yaxis=dict(gridcolor="rgba(145,169,151,.10)",zeroline=False)
+        font=dict(color="#dceae1",size=12),
+        title_font=dict(size=16,color="#eff8f2"),
+        showlegend=legend,
+        legend=dict(orientation="h",yanchor="top",y=-0.36,
+                    xanchor="center",x=0.5,font=dict(size=11),
+                    bgcolor="rgba(0,0,0,0)"),
+        xaxis=dict(gridcolor="rgba(145,169,151,.10)",zeroline=False,
+                   automargin=True,title_standoff=10),
+        yaxis=dict(gridcolor="rgba(145,169,151,.10)",zeroline=False,
+                   automargin=True,title_standoff=10)
     )
-    st.plotly_chart(fig,use_container_width=True)
+    return fig
+
+
+def _chart(fig,height=340):
+    format_kpi_chart(fig,height)
+    st.plotly_chart(fig,use_container_width=True,
+                    config={"displayModeBar":False,"responsive":True})
 
 
 def _goal_value(targets,key):
