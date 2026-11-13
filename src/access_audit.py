@@ -10,15 +10,15 @@ import streamlit as st
 ACCESS = (
     ("Mariana Torres", "Gerente", "MT",
      "Métricas del área · Analistas y KPI · Mensajes · Auditoría",
-     "Monitorear el equipo; ajustar metas y política; recibir alertas DTI y excepciones."),
+     "Monitorear el equipo; ajustar metas y política; recibir alertas de Soporte y excepciones."),
     ("Adrián Pérez", "Analista A-017", "AP",
      "Bandeja · Ficha de solicitud · Mis indicadores · Mensajes",
-     "Revisar sus Loan ID asignados; registrar decisiones y justificaciones; reportar DTI."),
+     "Revisar sus Loan ID asignados; registrar decisiones y justificaciones; reportar fallas a Soporte."),
     ("Sofía Reyes", "Analista A-022", "SR",
      "Bandeja · Ficha de solicitud · Mis indicadores · Mensajes",
-     "Revisar sus Loan ID asignados; registrar decisiones y justificaciones; reportar DTI."),
-    ("Especialista DTI", "Validación y soporte", "DT",
-     "Incidencias DTI · Validación del modelo · Mensajes · Auditoría",
+     "Revisar sus Loan ID asignados; registrar decisiones y justificaciones; reportar fallas a Soporte."),
+    ("Especialista de Soporte", "Soporte y validación", "SP",
+     "Centro de soporte · Validación del modelo · Mensajes",
      "Consultar métricas técnicas de TEST y documentar resolución de incidencias."),
 )
 
