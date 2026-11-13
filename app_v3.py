@@ -190,6 +190,13 @@ with st.sidebar:
     elif role=='dti':
         pages=['Incidencias DTI','Validación del modelo','Mensajes','Auditoría de accesos']
     else:pages=['Operación','Validación del modelo']
+    # Migración segura de nombres de navegación al actualizar la V3 abierta.
+    renamed_pages={'Política y cartera':'Métricas del área',
+                   'Recorridos y gobierno':'Auditoría de accesos'}
+    for nav_key in ('page','page_to',f'nav_{role}'):
+        prior=st.session_state.get(nav_key)
+        if prior in renamed_pages:
+            st.session_state[nav_key]=renamed_pages[prior]
     if 'page' not in st.session_state or st.session_state.page not in pages:
         st.session_state.page=pages[0]
     if 'page_to' in st.session_state:
