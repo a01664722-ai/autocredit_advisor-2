@@ -63,14 +63,36 @@ def _kcard(label,value,detail,tone="green",p=None):
             f'<div class="ac-mgr-desc">{html.escape(detail)}</div>{bar}</div>')
 
 
-def _fig(fig,height=315):
-    fig.update_layout(height=height,margin=dict(l=12,r=12,t=44,b=22),
-            paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#d8e7db",size=12),
-            xaxis=dict(gridcolor="rgba(151,172,155,.1)",zeroline=False),
-            yaxis=dict(gridcolor="rgba(151,172,155,.13)",zeroline=False),
-            legend=dict(orientation="h",y=1.15))
-    st.plotly_chart(fig,use_container_width=True)
+def format_executive_chart(fig,height=380,horizontal=False):
+    """Reserva una zona bajo el eje X para leyendas sin superposición."""
+    is_pie=any(isinstance(trace,go.Pie) for trace in fig.data)
+    show_legend=fig.layout.showlegend
+    if show_legend is None:
+        show_legend=(len(fig.data)>1 or is_pie)
+    fig.update_layout(
+        height=max(height,390) if show_legend else max(height,345),
+        margin=dict(l=195 if horizontal else 35,r=35,t=64,
+                    b=118 if show_legend else 65),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#d8e7db",size=12),
+        title_font=dict(size=16,color="#ecf7f0"),
+        showlegend=show_legend,
+        legend=dict(orientation="h",yanchor="top",y=-0.35,
+                    xanchor="center",x=0.5,font=dict(size=11),
+                    bgcolor="rgba(0,0,0,0)"),
+        xaxis=dict(gridcolor="rgba(151,172,155,.10)",zeroline=False,
+                   automargin=True,title_standoff=12),
+        yaxis=dict(gridcolor="rgba(151,172,155,.13)",zeroline=False,
+                   automargin=True,title_standoff=10),
+    )
+    return fig
+
+
+def _fig(fig,height=380,horizontal=False):
+    format_executive_chart(fig,height=height,horizontal=horizontal)
+    st.plotly_chart(fig,use_container_width=True,
+                    config={"displayModeBar":False,"responsive":True})
 
 
 def build_team_metrics(records, targets, reference=None):
@@ -106,7 +128,7 @@ def render_manager_overview(scores=None):
 
     st.markdown(
         f'<div class="ac-mgr-eyebrow">AUTOCREDIT / CONTROL DIRECTIVO MENSUAL</div>'
-        f'<div class="ac-mgr-title">Visión integral del área</div>'
+        f'<div class="ac-mgr-title">Métricas del área</div>'
         f'<div class="ac-mgr-sub">Mariana Torres · {html.escape(month)} · '
         'indicadores operativos consolidados de Adrián, Sofía y soporte DTI.</div>',
         unsafe_allow_html=True)
@@ -190,9 +212,10 @@ def render_manager_overview(scores=None):
                          ],textposition="outside"))
             fig.add_hline(y=goal*mult,line_dash="dash",line_color="#f6c76a",
                           annotation_text="Meta de gerencia")
-            fig.update_layout(title="Resultado vs meta individual",
+            fig.update_layout(title="Resultado vs. meta individual",
+                       showlegend=False,
                        yaxis_title="Porcentaje (%)" if metric_type=="rate" else "Casos")
-            _fig(fig,320)
+            _fig(fig,365)
         with right:
             fig=go.Figure()
             colors={"A-017":"#5ed6a0","A-022":"#f4bf68"}
@@ -205,11 +228,11 @@ def render_manager_overview(scores=None):
                    line=dict(color=colors[aid],width=3),marker=dict(size=4)))
             fig.add_trace(go.Scatter(x=[1,stats["month_days"]],
                       y=[goal/stats["month_days"],goal],
-                      mode="lines",name="Meta mensual individual",
+                      mode="lines",name="Meta del mes",
                       line=dict(color="#9cafa2",dash="dash")))
-            fig.update_layout(title="Decisiones acumuladas durante el mes",
+            fig.update_layout(title="Decisiones acumuladas del mes",
                                xaxis_title="Día del mes",yaxis_title="Decisiones")
-            _fig(fig,320)
+            _fig(fig,410)
 
         st.markdown("**Indicadores de gestión por analista**")
         table=[]
@@ -241,17 +264,31 @@ def render_manager_overview(scores=None):
     with l:
         categories=[x["category"] for x in dti["rows"]]
         values=[categories.count(x) for x in CATEGORIES]
-        fig=go.Figure(go.Bar(x=list(CATEGORIES),y=values,
-                  marker_color="#54d9a1",text=values,textposition="outside"))
-        fig.update_layout(title="Alertas recibidas por tipo",yaxis_title="Incidencias",
-                          xaxis_tickangle=-20)
-        _fig(fig,310)
+        if dti["total"]:
+            # Barras horizontales: etiquetas completas, sin diagonales.
+            nonzero=[(cat,n) for cat,n in zip(CATEGORIES,values) if n>0]
+            categories_show=[p[0] for p in nonzero][::-1]
+            values_show=[p[1] for p in nonzero][::-1]
+            fig=go.Figure(go.Bar(
+                x=values_show,y=categories_show,orientation="h",
+                marker_color="#54d9a1",text=values_show,
+                textposition="outside",cliponaxis=False))
+            fig.update_layout(
+                title="Incidencias por categoría",
+                xaxis_title="Número de reportes",showlegend=False,
+                xaxis=dict(range=[0,max(values_show)*1.25+0.4],dtick=1),
+                yaxis=dict(type="category",automargin=True),
+            )
+            _fig(fig,385,horizontal=True)
+        else:
+            st.info("Sin reportes de DTI este mes. La distribución por categoría aparecerá cuando existan incidencias.")
     with r:
         fig=go.Figure(go.Pie(
             labels=list(STATES),values=[dti["open"],dti["review"],dti["solved"]],
             hole=.67,marker=dict(colors=["#ee959d","#e9c068","#59d8a0"])))
         fig.update_layout(title="Estado de casos DTI",showlegend=True)
-        _fig(fig,310) if dti["total"] else st.info("Sin incidencias DTI durante este mes: la resolución no es evaluable.")
+        _fig(fig,390) if dti["total"] else st.info(
+            "Sin incidencias DTI durante este mes: la resolución no es evaluable.")
     with st.expander("Ver detalle de incidencias reportadas"):
         st.dataframe(pd.DataFrame([{
           "Ticket":f'#{t["id"]}',"Analista":ANALYST_IDS.get(t["analyst_id"],t["analyst_id"]),
