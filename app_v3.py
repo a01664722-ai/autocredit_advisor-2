@@ -21,6 +21,7 @@ from src.profile_state import (
 )
 from src.login_view import render_login
 from src.manager_overview import render_manager_overview
+from src.access_audit import render_access_audit
 from src.dti_views import render_analyst_dti_sidebar, render_dti_incidents
 from src.ops_monitor import begin_session, touch_session, end_session
 
@@ -185,9 +186,9 @@ with st.sidebar:
         render_analyst_dti_sidebar(analyst_id, M.scores)
         pages=['Bandeja','Ficha de solicitud','Mis indicadores','Mensajes']
     elif role=='gerente':
-        pages=['Política y cartera','Analistas y KPI','Mensajes','Recorridos y gobierno']
+        pages=['Métricas del área','Analistas y KPI','Mensajes','Auditoría de accesos']
     elif role=='dti':
-        pages=['Incidencias DTI','Validación del modelo','Mensajes','Recorridos y gobierno']
+        pages=['Incidencias DTI','Validación del modelo','Mensajes','Auditoría de accesos']
     else:pages=['Operación','Validación del modelo']
     if 'page' not in st.session_state or st.session_state.page not in pages:
         st.session_state.page=pages[0]
@@ -1091,7 +1092,7 @@ elif page=='Mis indicadores':
     render_analyst_month(name, analyst_id, M.scores)
     footnote()
 
-elif page=='Política y cartera':
+elif page=='Métricas del área':
     render_manager_overview(M.scores)
     with st.expander('Simulador de corte de rechazo · uso académico', expanded=False):
         st.warning('Este simulador usa las etiquetas observadas de TEST. '
@@ -1243,20 +1244,6 @@ elif page=='Validación del modelo':
     st.caption('Precaución de sesgo: FINANCIAL_LITERACY_SCORE puede representar indirectamente características socioeconómicas. Se requiere evaluación formal antes de emplear este modelo fuera del ejercicio académico.')
     footnote()
 
-elif page=='Recorridos y gobierno':
-    st.title('P5/P6 · Recorridos, controles y gobierno')
-    st.caption('Visible solo para gerencia y validación DTI; no se expone la matriz de permisos al analista de crédito.')
-    with st.container(border=True):
-        st.markdown('**Flujo autorizado**')
-        st.write('Analista: bandeja → aceptar/condicionar/rechazar → bitácora. Si contradice XGBoost, se abre ficha y confirmación con motivo y aviso a gerencia.')
-        st.write('Gerente: cartera TEST → revisar escenario de corte de rechazo (manteniendo corte inferior F2) → aplicar política → avisos a analistas → seguimiento de KPI y excepciones.')
-        st.write('DTI: TRAIN (entrenamiento y validación) → TEST (evaluación cerrada) → curvas ROC/PR, matriz de confusión, calibración y sesgos.')
-    st.subheader('Matriz de acceso de demostración')
-    st.dataframe(pd.DataFrame([
-       {'Rol':'Analista','Individuo TEST asignado':'Sí','Cambiar corte':'No','Ver ranking':'No','Ver métricas TEST agregadas':'No','Gobierno':'No'},
-       {'Rol':'Gerente','Individuo TEST asignado':'No','Cambiar corte':'Sí','Ver ranking':'Sí','Ver métricas TEST agregadas':'Sí','Gobierno':'Sí'},
-       {'Rol':'Operación','Individuo TEST asignado':'No','Cambiar corte':'No','Ver ranking':'No','Ver métricas TEST agregadas':'Sí','Gobierno':'No'},
-       {'Rol':'DTI','Individuo TEST asignado':'No','Cambiar corte':'No','Ver ranking':'No','Ver métricas TEST agregadas':'Sí','Gobierno':'Sí'}]),hide_index=True,use_container_width=True)
-    st.warning('Este selector de perfiles es únicamente un prototipo de interfaz. No implementa autenticación real ni control de acceso por servidor. Antes de usar datos sensibles: SSO institucional, controles RLS y PostgreSQL gestionado.')
-    st.info('Los cambios de SQLite son compartidos solo mientras esta instancia esté activa. Para persistencia duradera se necesita una base de datos externa con control de acceso y auditoría.')
+elif page=='Auditoría de accesos':
+    render_access_audit()
     footnote()
