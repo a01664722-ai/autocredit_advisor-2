@@ -49,7 +49,6 @@ PERSONAS={
  'Adrián · Analista A-017':('analista','A-017','Adrián Pérez'),
  'Sofía · Analista A-022':('analista','A-022','Sofía Reyes'),
  'Mariana · Gerente':('gerente',None,'Mariana Torres'),
- 'Luis · Operación':('operacion',None,'Luis Ramírez'),
  'Especialista · Validación DTI':('dti',None,'Especialista DTI'),
 }
 METRICAS_OBJ={'Resueltas':'Casos resueltos','Con justificación':'Excepciones justificadas','Coincidencia con sugerencia':'Coincidencia modelo–analista'}
@@ -189,7 +188,9 @@ with st.sidebar:
         pages=['Métricas del área','Analistas y KPI','Mensajes','Auditoría de accesos']
     elif role=='dti':
         pages=['Incidencias DTI','Validación del modelo','Mensajes','Auditoría de accesos']
-    else:pages=['Operación','Validación del modelo']
+    else:
+        st.error("Perfil no disponible.")
+        st.stop()
     # Migración segura de nombres de navegación al actualizar la V3 abierta.
     renamed_pages={'Política y cartera':'Métricas del área',
                    'Recorridos y gobierno':'Auditoría de accesos'}
@@ -1170,17 +1171,6 @@ elif page=='Métricas del área':
 
 elif page=='Analistas y KPI':
     render_manager_month(name)
-    footnote()
-
-elif page=='Operación':
-    st.title('P4 · Seguimiento operativo')
-    action=store.decisions()
-    strip_metrics([('TRAIN',f'{len(M.train):,}','Entrenamiento del modelo',''),
-                   ('TEST',f'{len(M.test):,}','Muestra independiente',''),
-                   ('Decisiones demo',str(len(action)),'Bitácora compartida',''),
-                   ('AUC XGBoost',f'{M.metricas.iloc[0]["ROC-AUC"]:.3f}','Calculado sobre TEST','good')])
-    st.info('Sin registros productivos, no se reportan incidentes en tiempo real, SLA o drift de producción. El seguimiento mostrado es el entorno académico de TEST.')
-    st.caption('Para las gráficas técnicas consulta Validación del modelo.')
     footnote()
 
 elif page=='Incidencias DTI':
