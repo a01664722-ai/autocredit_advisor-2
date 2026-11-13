@@ -131,7 +131,7 @@ def render_manager_overview(scores=None):
         f'<div class="ac-mgr-eyebrow">AUTOCREDIT / CONTROL DIRECTIVO MENSUAL</div>'
         f'<div class="ac-mgr-title">Métricas del área</div>'
         f'<div class="ac-mgr-sub">Mariana Torres · {html.escape(month)} · '
-        'indicadores operativos consolidados de Adrián, Sofía y soporte DTI.</div>',
+        'indicadores operativos consolidados de Adrián, Sofía y Soporte.</div>',
         unsafe_allow_html=True)
 
     cards=[
@@ -141,11 +141,11 @@ def render_manager_overview(scores=None):
         ("Meta mensual del equipo",f'{reached:.1%}',
          "Avance en decisiones registradas por ambos analistas",
          "green" if reached>=1 else "amber" if reached>=.5 else "red",reached),
-        ("Incidencias DTI resueltas",
+        ("Incidencias de Soporte resueltas",
          f'{dti["solved"]} / {dti["total"]}',
          "Incidencias abiertas este mes y resueltas",
          "green" if dti_reached is not None and dti_reached>=1 else "amber" if dti_reached is not None and dti_reached>=.5 else "neutral",dti_reached),
-        ("Resolución mensual DTI",f'{dti["rate"]:.1%}' if dti["rate"] is not None else "—",
+        ("Resolución mensual de Soporte",f'{dti["rate"]:.1%}' if dti["rate"] is not None else "—",
          f'Meta de referencia: {dti_target:.0%} · sin casos = no evaluable',
          "green" if dti_reached is not None and dti_reached>=1 else "amber" if dti_reached is not None and dti_reached>=.5 else "neutral",dti_reached),
         ("Excepciones de crédito",f'{team["exceptions"]:,}',
@@ -169,7 +169,7 @@ def render_manager_overview(scores=None):
     f1,f2,f3=st.columns([1.1,1.5,1.1],gap="medium")
     with f1:
         profile=st.selectbox("Perfil",["Todos los perfiles","Adrián · A-017",
-                           "Sofía · A-022","Soporte DTI"],key="mgr_overview_filter")
+                           "Sofía · A-022","Soporte"],key="mgr_overview_filter")
     with f2:
         selected=st.selectbox("Indicador de analistas",[x[0] for x in KPI_SPECS],
            format_func=lambda x:KPI_MAP[x][1],key="mgr_overview_metric")
@@ -177,9 +177,9 @@ def render_manager_overview(scores=None):
         order=st.selectbox("Ordenar",["Mayor avance","Menor avance"],
                            key="mgr_overview_sort")
 
-    if profile=="Soporte DTI":
-        st.info("Perfil DTI seleccionado: el panel siguiente muestra sus incidencias, "
-                "resolución mensual y casos pendientes. DTI no toma decisiones crediticias.")
+    if profile=="Soporte":
+        st.info("Soporte seleccionado: el panel siguiente muestra sus incidencias, "
+                "resolución mensual y casos pendientes. Soporte no toma decisiones crediticias.")
     else:
         chosen_ids=(
            ["A-017"] if profile.startswith("Adrián") else
@@ -256,7 +256,7 @@ def render_manager_overview(scores=None):
                    "no obligan a aceptar o rechazar solicitudes. El ranking no representa "
                    "por sí solo calidad crediticia.")
 
-    st.markdown('<div class="ac-mgr-section">Supervisión de incidencias · DTI</div>',
+    st.markdown('<div class="ac-mgr-section">Supervisión de incidencias · Soporte</div>',
                 unsafe_allow_html=True)
     a,b,c,d=st.columns(4,gap="small")
     a.metric("Reportadas este mes",dti["total"])
@@ -284,14 +284,14 @@ def render_manager_overview(scores=None):
             )
             _fig(fig,385,horizontal=True)
         else:
-            st.info("Sin reportes de DTI este mes. La distribución por categoría aparecerá cuando existan incidencias.")
+            st.info("Sin reportes de Soporte este mes. La distribución por categoría aparecerá cuando existan incidencias.")
     with r:
         fig=go.Figure(go.Pie(
             labels=list(STATES),values=[dti["open"],dti["review"],dti["solved"]],
             hole=.67,marker=dict(colors=["#ee959d","#e9c068","#59d8a0"])))
-        fig.update_layout(title="Estado de casos DTI",showlegend=True)
+        fig.update_layout(title="Estado de casos de Soporte",showlegend=True)
         _fig(fig,390) if dti["total"] else st.info(
-            "Sin incidencias DTI durante este mes: la resolución no es evaluable.")
+            "Sin incidencias de Soporte durante este mes: la resolución no es evaluable.")
     with st.expander("Ver detalle de incidencias reportadas"):
         st.dataframe(pd.DataFrame([{
           "Ticket":f'#{t["id"]}',"Analista":ANALYST_IDS.get(t["analyst_id"],t["analyst_id"]),
@@ -299,8 +299,8 @@ def render_manager_overview(scores=None):
           "Estado":t["status"],"Loan ID":t.get("loan_id") or "—",
           "Asunto":t["title"],"Resolución":t["resolution_note"] or "Pendiente"
         } for t in tickets]),hide_index=True,use_container_width=True)
-        st.caption("Los mensajes de alerta llegan al buzón de DTI y de Mariana. "
-                   "La resolución se registra desde el perfil Especialista DTI.")
+        st.caption("Los mensajes de alerta llegan al buzón de Soporte y de Mariana. "
+                   "La resolución se registra desde el perfil de Soporte.")
 
     st.markdown('<div class="ac-mgr-section">Sesiones en plataforma · todos los perfiles</div>',
                 unsafe_allow_html=True)
@@ -320,5 +320,5 @@ def render_manager_overview(scores=None):
     st.markdown('<div class="ac-mgr-section">Metas y política</div>',unsafe_allow_html=True)
     st.info("Las metas mensuales operativas se editan en **Analistas y KPI**, "
             "con confirmación y avisos a ambos analistas. "
-            "El objetivo de resolución DTI es 99% de las incidencias reportadas "
+            "El objetivo de resolución de Soporte es 99% de las incidencias reportadas "
             "durante el mes; no implica que hayan existido incidencias.")
