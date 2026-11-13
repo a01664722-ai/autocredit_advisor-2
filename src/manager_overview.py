@@ -13,6 +13,7 @@ import streamlit as st
 
 from src import store
 from src.kpi_views import ANALYSTS
+from src.analyst_palette import analyst_color, GOAL_COLOR
 from src.monthly_kpis import KPI_SPECS, KPI_MAP, local_now, monthly_summary, progress, fmt, level
 from src.ops_monitor import (
     CATEGORIES, incident_month_summary, incidents, monthly_session_stats, STATES,
@@ -203,33 +204,35 @@ def render_manager_overview(scores=None):
         left,right=st.columns(2,gap="large")
         with left:
             fig=go.Figure()
-            labels=[ANALYST_IDS[aid].split()[0] for aid in chosen_ids]
-            vals=[team["individuals"][aid]["metrics"][selected] for aid in chosen_ids]
             mult=100 if metric_type=="rate" else 1
-            fig.add_trace(go.Bar(x=labels,y=[v*mult if v is not None else None for v in vals],
-                         name="Resultado",marker_color="#64dca6",text=[
-                             f"{v*mult:.1f}" if v is not None else "—" for v in vals
-                         ],textposition="outside"))
-            fig.add_hline(y=goal*mult,line_dash="dash",line_color="#f6c76a",
+            for aid in chosen_ids:
+                value=team["individuals"][aid]["metrics"][selected]
+                label=ANALYST_IDS[aid].split()[0]
+                fig.add_trace(go.Bar(
+                    x=[label],
+                    y=[value*mult if value is not None else None],
+                    name=label,marker_color=analyst_color(aid),
+                    text=[f"{value*mult:.1f}" if value is not None else "—"],
+                    textposition="outside"))
+            fig.add_hline(y=goal*mult,line_dash="dash",line_color=GOAL_COLOR,
                           annotation_text="Meta de gerencia")
             fig.update_layout(title="Resultado vs. meta individual",
-                       showlegend=False,
+                       showlegend=True,
                        yaxis_title="Porcentaje (%)" if metric_type=="rate" else "Casos")
-            _fig(fig,365)
+            _fig(fig,410)
         with right:
             fig=go.Figure()
-            colors={"A-017":"#5ed6a0","A-022":"#f4bf68"}
-            for aid in chosen_ids:
+             for aid in chosen_ids:
                 stats=team["individuals"][aid]
                 days=np.arange(1,stats["month_days"]+1)
                 curve=[v if idx<stats["day"] else None for idx,v in enumerate(stats["cumulative"])]
                 fig.add_trace(go.Scatter(x=days,y=curve,mode="lines+markers",
                    name=ANALYST_IDS[aid].split()[0],
-                   line=dict(color=colors[aid],width=3),marker=dict(size=4)))
+                   line=dict(color=analyst_color(aid),width=3),marker=dict(size=4)))
             fig.add_trace(go.Scatter(x=[1,stats["month_days"]],
                       y=[goal/stats["month_days"],goal],
                       mode="lines",name="Meta del mes",
-                      line=dict(color="#9cafa2",dash="dash")))
+                      line=dict(color=GOAL_COLOR,dash="dash")))
             fig.update_layout(title="Decisiones acumuladas del mes",
                                xaxis_title="Día del mes",yaxis_title="Decisiones")
             _fig(fig,410)
