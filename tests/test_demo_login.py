@@ -12,7 +12,7 @@ PERSONAS = {
     "Adrián · Analista A-017": ("analista", "A-017", "Adrián Pérez"),
     "Sofía · Analista A-022": ("analista", "A-022", "Sofía Reyes"),
     "Mariana · Gerente": ("gerente", None, "Mariana Torres"),
-    "Especialista · Validación DTI": ("dti", None, "Especialista DTI"),
+    "Especialista · Soporte": ("dti", None, "Especialista de Soporte"),
 }
 
 
@@ -30,7 +30,7 @@ def test_access_is_initially_closed_and_checks_profile_catalog():
     ("Adrián · Analista A-017", "analista", "A-017"),
     ("Sofía · Analista A-022", "analista", "A-022"),
     ("Mariana · Gerente", "gerente", None),
-    ("Especialista · Validación DTI", "dti", None),
+    ("Especialista · Soporte", "dti", None),
 ])
 def test_all_profiles_can_enter_and_sign_out(label,expected_role,expected_id):
     state={"loan_actual":"277432","pending_choice":{"loan_id":"277432"},
