@@ -16,6 +16,7 @@ from src import store
 from src.monthly_kpis import monthly_summary, level
 from src.kpi_views import render_analyst_month, render_manager_month
 from src.message_views import render_messages
+from src.profile_state import reset_profile_navigation
 
 st.set_page_config(page_title='AutoCredit Advisor | Equipo 3', page_icon=':material/finance:', layout='wide')
 st.markdown('''<style>
@@ -149,6 +150,9 @@ with st.sidebar:
     st.markdown('### AutoCredit Advisor')
     selected=st.selectbox('Perfil de demostración*',list(PERSONAS),key='perfil',help='El selector demuestra roles: NO es autenticación de producción.')
     role,analyst_id,name=PERSONAS[selected]
+    # No reutilizar Loan ID, filtros ni decisiones pendientes de otro perfil.
+    # La bitácora SQLite permanece intacta y cada analista conserva sus casos.
+    reset_profile_navigation(st.session_state, role, analyst_id)
     st.caption(f'{name} · {role.title()}')
     if role in ('analista','gerente','dti'):
         n=store.unread(role,analyst_id)
