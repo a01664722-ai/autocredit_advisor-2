@@ -20,6 +20,9 @@ from src.profile_state import (
     reset_profile_navigation, demo_current_profile, demo_sign_out
 )
 from src.login_view import render_login
+from src.manager_overview import render_manager_overview
+from src.dti_views import render_analyst_dti_sidebar, render_dti_incidents
+from src.ops_monitor import begin_session, touch_session, end_session
 
 st.set_page_config(page_title='AutoCredit Advisor | Equipo 3', page_icon=':material/finance:', layout='wide')
 st.markdown('''<style>
@@ -57,6 +60,8 @@ if selected_profile is None:
     render_login(PERSONAS)
     st.stop()
 
+active_role, active_analyst_id, active_name = PERSONAS[selected_profile]
+
 @st.cache_resource(show_spinner='Entrenando XGBoost y Logit exclusivamente con TRAIN…')
 def artefactos():
     train,test=bases()
@@ -65,6 +70,12 @@ def artefactos():
 try:
     M=artefactos()
     store.initialize(M.corte_rechazo)
+    # Duración observable solo entre inicio y cierre; no interpreta actividad.
+    if "_ops_session_token" not in st.session_state:
+        st.session_state["_ops_session_token"] = begin_session(
+            active_role, active_analyst_id, active_name)
+    else:
+        touch_session(st.session_state["_ops_session_token"])
 except Exception as exc:
     st.error(f'No se puede iniciar: {exc}')
     st.info('Copia los archivos TRAIN y TEST originales en data/. Verifica el esquema de las 12 variables y los Loan ID únicos.')
@@ -169,9 +180,14 @@ with st.sidebar:
         if st.button(f'Mensajes ({n})',icon=':material/mail:',use_container_width=True):
             st.session_state['page_to']='Mensajes'
             st.rerun()
-    if role=='analista':pages=['Bandeja','Ficha de solicitud','Mis indicadores','Mensajes']
-    elif role=='gerente':pages=['Política y cartera','Analistas y KPI','Mensajes','Recorridos y gobierno']
-    elif role=='dti':pages=['Validación del modelo','Mensajes','Recorridos y gobierno']
+    if role=='analista':
+        st.divider()
+        render_analyst_dti_sidebar(analyst_id, M.scores)
+        pages=['Bandeja','Ficha de solicitud','Mis indicadores','Mensajes']
+    elif role=='gerente':
+        pages=['Política y cartera','Analistas y KPI','Mensajes','Recorridos y gobierno']
+    elif role=='dti':
+        pages=['Incidencias DTI','Validación del modelo','Mensajes','Recorridos y gobierno']
     else:pages=['Operación','Validación del modelo']
     if 'page' not in st.session_state or st.session_state.page not in pages:
         st.session_state.page=pages[0]
@@ -190,6 +206,7 @@ with st.sidebar:
     if st.button('Cerrar sesión',icon=':material/logout:',
                  use_container_width=True,type='secondary',key='ac_logout_sidebar'):
         # Solo se limpia el estado de este navegador; no afecta la bitácora SQLite.
+        end_session(st.session_state.get("_ops_session_token"))
         demo_sign_out(st.session_state)
         st.rerun()
 
@@ -1075,66 +1092,73 @@ elif page=='Mis indicadores':
     footnote()
 
 elif page=='Política y cartera':
-    st.title('P3 · Política de riesgo y cartera')
-    st.caption('La gerente decide los cortes. Cada ajuste modifica la sugerencia que verá el analista; ambos perfiles consultan el mismo estado compartido de esta instancia.')
-    col1,col2=st.columns([2,1])
-    with col1:segment=st.selectbox('Segmento a evaluar',['General','DTI bajo','DTI medio','DTI alto'])
-    policy=store.policy(segment)
-    with col2:st.metric('Corte activo',f'{policy["threshold"]:.1%}' if segment!='General' and policy['version']>1 else f'{active_threshold(segment):.1%}')
-    cases=M.scores if segment=='General' else M.scores[M.scores.SEG_DTI==segment]
-    active=active_threshold(segment)
-    new=st.slider('Probar corte de rechazo sobre PD XGBoost',min_value=float(np.ceil(M.corte_base*1000+1)/10),max_value=60.0,value=round(active*100,1),step=0.1,format='%.1f%%')/100.0
-    old_ap=(cases.PD_XGB<M.corte_base)
-    new_ap=(cases.PD_XGB<M.corte_base)
-    old_cond=(cases.PD_XGB>=M.corte_base)&(cases.PD_XGB<active)
-    new_cond=(cases.PD_XGB>=M.corte_base)&(cases.PD_XGB<new)
-    real_def=lambda m:float(cases.loc[m,'DEFAULT'].mean()) if m.sum() else float('nan')
-    strip_metrics([('Solicitudes TEST',f'{len(cases):,}',f'Segmento {segment}',''),
-                   ('Aceptación',f'{new_ap.mean():.1%}',f'Corte inferior fijo {M.corte_base:.2%}',''),
-                   ('Default observado aprobado',f'{real_def(new_ap):.1%}' if new_ap.any() else '—',
-                    'Histórico de TEST, no proyección','bad' if real_def(new_ap)>.15 else 'good'),
-                   ('Cambiarían de sugerencia',f'{int((old_cond!=new_cond).sum()):,}','Condicionar ↔ Rechazar','warn')])
-    if st.button('Aplicar corte y avisar a analistas',type='primary',icon=':material/send:'):
-        if segment=='General':
-            before=np.array([active_threshold(s) for s in M.scores.SEG_DTI])
-            after=np.array([new if store.policy(s)['version']==1 else active_threshold(s) for s in M.scores.SEG_DTI])
-            affected=pd.Series(((M.scores.PD_XGB.to_numpy()>=M.corte_base)&(M.scores.PD_XGB.to_numpy()<before))!=((M.scores.PD_XGB.to_numpy()>=M.corte_base)&(M.scores.PD_XGB.to_numpy()<after)),index=M.scores.index)
-            affected_df=M.scores[affected]
-        else:
-            before=active_threshold(segment)
-            affected_df=cases[(cases.PD_XGB>=min(before,new))&(cases.PD_XGB<max(before,new))]
-        by_analyst={aid:int((affected_df.ANALISTA_ID==aid).sum()) for aid in ['A-017','A-022']}
-        if store.update_policy(segment,new,name,by_analyst):
-            st.success('Nuevo corte guardado. Los analistas recibirán una notificación con el efecto del cambio.')
-            st.rerun()
-        else:st.info('El corte propuesto coincide con el vigente.')
-    st.caption(f'Política de tres decisiones: aceptar bajo {M.corte_base:.2%} (F2, inalterable); condicionar entre cortes; rechazar a partir del corte gerencial. Cambiar cortes consultando TEST compromete la independencia de evaluación y requiere validación posterior.')
-    # El corte inferior queda fijo; mover rechazo cambia CONDICIONAR vs RECHAZAR,
-    # no la proporción de créditos aceptados directamente.
-    thresholds=np.arange(np.ceil(M.corte_base*1000+1)/1000,.601,.005)
-    conditional=[];rejected=[];default_conditioned=[]
-    for t in thresholds:
-        mask=(cases.PD_XGB>=M.corte_base)&(cases.PD_XGB<t)
-        conditional.append(mask.mean()*100)
-        rejected.append((cases.PD_XGB>=t).mean()*100)
-        default_conditioned.append(cases.loc[mask,'DEFAULT'].mean()*100 if mask.any() else np.nan)
-    fc1,fc2=st.columns(2)
-    with fc1:
-        f=go.Figure()
-        f.add_trace(go.Scatter(x=thresholds*100,y=conditional,mode='lines',line_color='#e4be65',name='Condicionar'))
-        f.add_trace(go.Scatter(x=thresholds*100,y=rejected,mode='lines',line_color='#e56a72',name='Rechazar'))
-        f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
-        f.update_layout(title='Escenarios: condicionar y rechazar (TEST)',xaxis_title='Corte superior de PD (%)',yaxis_title='Porcentaje de solicitudes (%)',height=310,
-            margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
-        st.plotly_chart(f,use_container_width=True)
-    with fc2:
-        f=go.Figure(go.Scatter(x=thresholds*100,y=default_conditioned,mode='lines',line_color='#f08565',name='Default observado condicional'))
-        f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
-        f.update_layout(title='Incumplimiento observado en zona condicional (TEST)',xaxis_title='Corte superior de PD (%)',yaxis_title='Default histórico (%)',height=310,
-            margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
-        st.plotly_chart(f,use_container_width=True)
-    st.caption('Curvas calculadas con la variable DEFAULT de TEST, exclusivamente en agregado. Si el corte cambia después de ver TEST, debe evaluarse de nuevo en una muestra futura independiente antes de producción.')
-    footnote()
+    render_manager_overview(M.scores)
+    with st.expander('Simulador de corte de rechazo · uso académico', expanded=False):
+        st.warning('Este simulador usa las etiquetas observadas de TEST. '
+                   'Ajustar cortes viendo TEST puede sesgar la evaluación; '
+                   'no equivale a validar una política para producción.')
+    
+        st.subheader('Simulador de política de riesgo')
+        st.caption('La gerente decide los cortes. Cada ajuste modifica la sugerencia que verá el analista; ambos perfiles consultan el mismo estado compartido de esta instancia.')
+        col1,col2=st.columns([2,1])
+        with col1:segment=st.selectbox('Segmento a evaluar',['General','DTI bajo','DTI medio','DTI alto'])
+        policy=store.policy(segment)
+        with col2:st.metric('Corte activo',f'{policy["threshold"]:.1%}' if segment!='General' and policy['version']>1 else f'{active_threshold(segment):.1%}')
+        cases=M.scores if segment=='General' else M.scores[M.scores.SEG_DTI==segment]
+        active=active_threshold(segment)
+        new=st.slider('Probar corte de rechazo sobre PD XGBoost',min_value=float(np.ceil(M.corte_base*1000+1)/10),max_value=60.0,value=round(active*100,1),step=0.1,format='%.1f%%')/100.0
+        old_ap=(cases.PD_XGB<M.corte_base)
+        new_ap=(cases.PD_XGB<M.corte_base)
+        old_cond=(cases.PD_XGB>=M.corte_base)&(cases.PD_XGB<active)
+        new_cond=(cases.PD_XGB>=M.corte_base)&(cases.PD_XGB<new)
+        real_def=lambda m:float(cases.loc[m,'DEFAULT'].mean()) if m.sum() else float('nan')
+        strip_metrics([('Solicitudes TEST',f'{len(cases):,}',f'Segmento {segment}',''),
+                       ('Aceptación',f'{new_ap.mean():.1%}',f'Corte inferior fijo {M.corte_base:.2%}',''),
+                       ('Default observado aprobado',f'{real_def(new_ap):.1%}' if new_ap.any() else '—',
+                        'Histórico de TEST, no proyección','bad' if real_def(new_ap)>.15 else 'good'),
+                       ('Cambiarían de sugerencia',f'{int((old_cond!=new_cond).sum()):,}','Condicionar ↔ Rechazar','warn')])
+        if st.button('Aplicar corte y avisar a analistas',type='primary',icon=':material/send:'):
+            if segment=='General':
+                before=np.array([active_threshold(s) for s in M.scores.SEG_DTI])
+                after=np.array([new if store.policy(s)['version']==1 else active_threshold(s) for s in M.scores.SEG_DTI])
+                affected=pd.Series(((M.scores.PD_XGB.to_numpy()>=M.corte_base)&(M.scores.PD_XGB.to_numpy()<before))!=((M.scores.PD_XGB.to_numpy()>=M.corte_base)&(M.scores.PD_XGB.to_numpy()<after)),index=M.scores.index)
+                affected_df=M.scores[affected]
+            else:
+                before=active_threshold(segment)
+                affected_df=cases[(cases.PD_XGB>=min(before,new))&(cases.PD_XGB<max(before,new))]
+            by_analyst={aid:int((affected_df.ANALISTA_ID==aid).sum()) for aid in ['A-017','A-022']}
+            if store.update_policy(segment,new,name,by_analyst):
+                st.success('Nuevo corte guardado. Los analistas recibirán una notificación con el efecto del cambio.')
+                st.rerun()
+            else:st.info('El corte propuesto coincide con el vigente.')
+        st.caption(f'Política de tres decisiones: aceptar bajo {M.corte_base:.2%} (F2, inalterable); condicionar entre cortes; rechazar a partir del corte gerencial. Cambiar cortes consultando TEST compromete la independencia de evaluación y requiere validación posterior.')
+        # El corte inferior queda fijo; mover rechazo cambia CONDICIONAR vs RECHAZAR,
+        # no la proporción de créditos aceptados directamente.
+        thresholds=np.arange(np.ceil(M.corte_base*1000+1)/1000,.601,.005)
+        conditional=[];rejected=[];default_conditioned=[]
+        for t in thresholds:
+            mask=(cases.PD_XGB>=M.corte_base)&(cases.PD_XGB<t)
+            conditional.append(mask.mean()*100)
+            rejected.append((cases.PD_XGB>=t).mean()*100)
+            default_conditioned.append(cases.loc[mask,'DEFAULT'].mean()*100 if mask.any() else np.nan)
+        fc1,fc2=st.columns(2)
+        with fc1:
+            f=go.Figure()
+            f.add_trace(go.Scatter(x=thresholds*100,y=conditional,mode='lines',line_color='#e4be65',name='Condicionar'))
+            f.add_trace(go.Scatter(x=thresholds*100,y=rejected,mode='lines',line_color='#e56a72',name='Rechazar'))
+            f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
+            f.update_layout(title='Escenarios: condicionar y rechazar (TEST)',xaxis_title='Corte superior de PD (%)',yaxis_title='Porcentaje de solicitudes (%)',height=310,
+                margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
+            st.plotly_chart(f,use_container_width=True)
+        with fc2:
+            f=go.Figure(go.Scatter(x=thresholds*100,y=default_conditioned,mode='lines',line_color='#f08565',name='Default observado condicional'))
+            f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
+            f.update_layout(title='Incumplimiento observado en zona condicional (TEST)',xaxis_title='Corte superior de PD (%)',yaxis_title='Default histórico (%)',height=310,
+                margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
+            st.plotly_chart(f,use_container_width=True)
+        st.caption('Curvas calculadas con la variable DEFAULT de TEST, exclusivamente en agregado. Si el corte cambia después de ver TEST, debe evaluarse de nuevo en una muestra futura independiente antes de producción.')
+        footnote()
+    
 
 elif page=='Analistas y KPI':
     render_manager_month(name)
@@ -1149,6 +1173,13 @@ elif page=='Operación':
                    ('AUC XGBoost',f'{M.metricas.iloc[0]["ROC-AUC"]:.3f}','Calculado sobre TEST','good')])
     st.info('Sin registros productivos, no se reportan incidentes en tiempo real, SLA o drift de producción. El seguimiento mostrado es el entorno académico de TEST.')
     st.caption('Para las gráficas técnicas consulta Validación del modelo.')
+    footnote()
+
+elif page=='Incidencias DTI':
+    if role!='dti':
+        st.error('Esta pantalla corresponde al especialista DTI.')
+    else:
+        render_dti_incidents()
     footnote()
 
 elif page=='Validación del modelo':
