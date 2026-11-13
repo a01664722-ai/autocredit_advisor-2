@@ -22,7 +22,8 @@ from src.profile_state import (
 from src.login_view import render_login
 from src.manager_overview import render_manager_overview
 from src.access_audit import render_access_audit
-from src.dti_views import render_analyst_dti_sidebar, render_dti_incidents
+from src.dti_views import render_analyst_dti_sidebar
+from src.support_views import render_support_home, render_support_validation, REPOSITORY_URL
 from src.ops_monitor import begin_session, touch_session, end_session
 
 st.set_page_config(page_title='AutoCredit Advisor | Equipo 3', page_icon=':material/finance:', layout='wide')
@@ -49,7 +50,7 @@ PERSONAS={
  'Adrián · Analista A-017':('analista','A-017','Adrián Pérez'),
  'Sofía · Analista A-022':('analista','A-022','Sofía Reyes'),
  'Mariana · Gerente':('gerente',None,'Mariana Torres'),
- 'Especialista · Validación DTI':('dti',None,'Especialista DTI'),
+ 'Especialista · Soporte':('dti',None,'Especialista de Soporte'),
 }
 METRICAS_OBJ={'Resueltas':'Casos resueltos','Con justificación':'Excepciones justificadas','Coincidencia con sugerencia':'Coincidencia modelo–analista'}
 
@@ -174,7 +175,7 @@ with st.sidebar:
     # No reutilizar Loan ID, filtros ni decisiones pendientes de otro perfil.
     # La bitácora SQLite permanece intacta y cada analista conserva sus casos.
     reset_profile_navigation(st.session_state, role, analyst_id)
-    st.caption(f'{name} · {role.title()}')
+    st.caption(f'{name} · ' + {'analista':'Analista','gerente':'Gerencia','dti':'Soporte'}.get(role,role))
     if role in ('analista','gerente','dti'):
         n=store.unread(role,analyst_id)
         if st.button(f'Mensajes ({n})',icon=':material/mail:',use_container_width=True):
@@ -187,7 +188,7 @@ with st.sidebar:
     elif role=='gerente':
         pages=['Métricas del área','Analistas y KPI','Mensajes','Auditoría de accesos']
     elif role=='dti':
-        pages=['Incidencias DTI','Validación del modelo','Mensajes','Auditoría de accesos']
+        pages=['Centro de soporte','Validación del modelo','Mensajes']
     else:
         st.error("Perfil no disponible.")
         st.stop()
@@ -207,6 +208,9 @@ with st.sidebar:
             st.session_state[f'nav_{role}']=dest
     chosen=st.radio('Pantallas',pages,index=pages.index(st.session_state.page),key=f'nav_{role}')
     if chosen!=st.session_state.page:st.session_state.page=chosen
+    if role=='dti':
+        st.link_button('Ver código en GitHub',REPOSITORY_URL,
+                       icon=':material/code:',use_container_width=True)
     st.divider()
     st.caption(f'XGBoost · 12 variables · aceptar < {M.corte_base:.2%} · rechazar ≥ {M.corte_rechazo:.2%} (base)')
     st.caption('Demostración académica. No utilizar para aprobar créditos reales.')
@@ -1173,74 +1177,23 @@ elif page=='Analistas y KPI':
     render_manager_month(name)
     footnote()
 
-elif page=='Incidencias DTI':
+elif page=='Centro de soporte':
     if role!='dti':
-        st.error('Esta pantalla corresponde al especialista DTI.')
+        st.error('La consola de soporte es exclusiva del perfil de Soporte.')
     else:
-        render_dti_incidents()
+        render_support_home(M)
     footnote()
 
 elif page=='Validación del modelo':
-    st.title('P8 · Validación técnica del modelo · DTI')
-    st.caption('XGBoost es el campeón seleccionado para el prototipo por ROC-AUC y F1 en validación; Random Forest supera marginalmente su KS. TRAIN: 80,000 filas; TEST externo: 20,000. No equivale a aprobación productiva.')
-    threshold=M.corte_base
-    mx=M.metricas[M.metricas.Modelo=='XGBoost'].iloc[0]
-    strip_metrics([('ROC-AUC',f'{mx["ROC-AUC"]:.3f}','Discriminación en TEST','good'),
-                   ('Accuracy',f'{mx.Accuracy:.1%}','TEST · umbral validado',''),
-                   ('Recall default=1',f'{mx.Recall:.1%}','Incumplidores detectados','warn'),
-                   ('KS',f'{mx.KS:.3f}','Máxima separación ROC','good'),
-                   ('PR-AUC',f'{mx["PR-AUC"]:.3f}','Conjunto desbalanceado','')])
-    st.warning(f'Umbrales de tres vías seleccionados exclusivamente en VALIDACIÓN: aceptar < {M.corte_base:.2%}; condicionar hasta {M.corte_rechazo:.2%}; rechazar ≥ {M.corte_rechazo:.2%}. La matriz de confusión usa clasificación binaria al corte inferior F2. Falsos positivos en TEST: {int(mx.FP):,}.',icon=':material/warning:')
-    st.subheader('Comparación reproducible sobre TEST')
-    st.dataframe(M.metricas.rename(columns={'TN':'Verdaderos negativos','FP':'Falsos positivos',
-        'FN':'Falsos negativos','TP':'Verdaderos positivos'}),hide_index=True,use_container_width=True)
-    g1,g2=st.columns(2)
-    with g1:
-        st.markdown('**Curva ROC**')
-        fig=go.Figure()
-        for model,(fpr,tpr) in M.auc_roc.items():fig.add_trace(go.Scatter(x=fpr,y=tpr,mode='lines',name=model))
-        fig.add_trace(go.Scatter(x=[0,1],y=[0,1],line=dict(dash='dash',color='#707a73'),name='Azar'))
-        fig.update_layout(xaxis_title='Tasa de falsos positivos',yaxis_title='Sensibilidad',height=330,
-                          paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed',margin=dict(t=15,l=20,r=15,b=10))
-        st.plotly_chart(fig,use_container_width=True)
-    with g2:
-        st.markdown('**Matriz de confusión · XGBoost (TEST)**')
-        cm=np.array([[mx.TN,mx.FP],[mx.FN,mx.TP]],dtype=int)
-        fig=go.Figure(data=go.Heatmap(z=cm,x=['Predicho 0','Predicho 1'],y=['Real 0','Real 1'],
-                                   colorscale='Tealgrn',text=cm,texttemplate='%{text:,}',showscale=False))
-        fig.update_layout(height=330,paper_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed',
-                          margin=dict(t=15,l=20,r=15,b=10),yaxis={'autorange':'reversed'})
-        st.plotly_chart(fig,use_container_width=True)
-    g3,g4=st.columns(2)
-    with g3:
-        st.markdown('**Distribución de PD por resultado real (TEST)**')
-        fig=go.Figure()
-        for cls,color_ in [(0,'#7b99bd'),(1,'#e66f77')]:
-            pd_cls=M.scores.loc[M.scores.DEFAULT==cls,'PD_XGB']
-            fig.add_trace(go.Histogram(x=pd_cls,nbinsx=35,opacity=.7,marker_color=color_,
-                                     name=f'DEFAULT = {cls}',histnorm='probability'))
-        fig.update_layout(barmode='overlay',height=320,xaxis_title='PD XGBoost',yaxis_title='Proporción dentro de clase',
-            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed',margin=dict(t=5,l=20,r=20,b=8))
-        st.plotly_chart(fig,use_container_width=True)
-    with g4:
-        st.markdown('**Importancia de variables · XGBoost**')
-        importances=pd.Series(M.xgb.feature_importances_,index=COLS).sort_values().tail(9)
-        fig=go.Figure(go.Bar(x=importances.values,y=[LABELS[x] for x in importances.index],orientation='h',marker_color='#64b69d'))
-        fig.update_layout(height=320,xaxis_title='Importancia interna (ganancia relativa)',
-            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed',margin=dict(t=5,l=15,r=15,b=8))
-        st.plotly_chart(fig,use_container_width=True)
-    st.markdown('**Calibración: probabilidad predicha vs incumplimiento observado**')
-    fig=go.Figure()
-    fig.add_trace(go.Scatter(x=[0,1],y=[0,1],mode='lines',line=dict(dash='dash',color='#9ca8a0'),name='Ideal'))
-    for name,key in [('XGBoost','PD_XGB'),('Logit','PD_LOGIT')]:
-        frac,means=calibration_curve(M.scores.DEFAULT,M.scores[key],n_bins=10,strategy='quantile')
-        fig.add_trace(go.Scatter(x=means,y=frac,mode='lines+markers',name=name))
-    fig.update_layout(height=280,xaxis_title='Probabilidad media estimada',yaxis_title='Default observado',
-        paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed',margin=dict(t=5,l=20,r=20,b=8))
-    st.plotly_chart(fig,use_container_width=True)
-    st.caption('Precaución de sesgo: FINANCIAL_LITERACY_SCORE puede representar indirectamente características socioeconómicas. Se requiere evaluación formal antes de emplear este modelo fuera del ejercicio académico.')
+    if role!='dti':
+        st.error('La validación técnica está reservada al perfil de Soporte.')
+    else:
+        render_support_validation(M)
     footnote()
 
 elif page=='Auditoría de accesos':
-    render_access_audit()
-    footnote()
+    if role!='gerente':
+        st.error('La auditoría de accesos está reservada a gerencia.')
+    else:
+        render_access_audit()
+        footnote()
