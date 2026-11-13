@@ -19,13 +19,12 @@ CATEGORIES=(
     "Otro",
 )
 STATES=("Abierto","En revisión","Resuelto")
-ROLES=("analista","gerente","dti","operacion")
+ROLES=("analista","gerente","dti")
 PROFILE_KEYS=(
     ("analista","A-017","Adrián Pérez"),
     ("analista","A-022","Sofía Reyes"),
     ("gerente",None,"Mariana Torres"),
     ("dti",None,"Especialista DTI"),
-    ("operacion",None,"Luis Ramírez"),
 )
 
 
