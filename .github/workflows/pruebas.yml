@@ -34,7 +34,7 @@ jobs:
           python -m pip install -r requirements-dev.txt
 
       - name: Validar contrato del dato
-        run: python -m scripts.verificar_contrato data/Base_SAS_Equipo3.csv
+        run: python -m scripts.verificar_contrato tests/fixtures/dato_invalido.csv
 
       - name: Pruebas automáticas
         run: python -m pytest -q
