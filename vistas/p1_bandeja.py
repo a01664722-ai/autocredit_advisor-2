@@ -76,20 +76,26 @@ else:
         "Nivel": vista["NIVEL"],
         "Datos": vista["CALIDAD"],
         "Sugerencia del modelo": vista["SUGERENCIA"],
-        "DTI": vista["DEBT_TO_INCOME"].map(lambda v: "falta" if pd.isna(v) else f"{v:.0%}"),
-        "LTV": vista["LOAN_TO_VALUE"].map(lambda v: "falta" if pd.isna(v) else f"{v:.0%}"),
+        "DTI": vista["DEBT_TO_INCOME"] * 100,
+        "LTV": vista["LOAN_TO_VALUE"] * 100,
+        "Ahorro": pd.to_numeric(vista["SAVINGS_BALANCE"], errors="coerce"),
     })
     seleccion = st.dataframe(
-        tabla, hide_index=True, on_select="rerun", selection_mode="single-row", key="p1_tabla",
+        tabla, hide_index=True, column_order=list(tabla.columns),
+        on_select="rerun", selection_mode="single-row", key="p1_tabla",
         column_config={
             "Folio": st.column_config.TextColumn("Folio (SIMULADO)", help="Completo porque es tu caso (matriz F)."),
             "Recibida": st.column_config.TextColumn("Recibida (SIMULADO)"),
             "PD": st.column_config.ProgressColumn("PD (CALCULADO)", format="%.1f%%", min_value=0,
                                                   max_value=C.ESCALA_PD_MAX * 100),
-            "Datos": st.column_config.TextColumn("Calidad de datos", help="Incompleto o Fuera de rango abren un "
+            "Nivel": st.column_config.TextColumn("Nivel (CALCULADO)"),
+            "Datos": st.column_config.TextColumn("Datos (CALCULADO)", help="Incompleto o Fuera de rango abren un "
                                                  "estado de excepción en la ficha."),
-            "DTI": st.column_config.TextColumn("DTI (REAL)"),
-            "LTV": st.column_config.TextColumn("LTV (REAL)"),
+            "Sugerencia del modelo": st.column_config.TextColumn("Sugerencia (CALCULADO)"),
+            "DTI": st.column_config.NumberColumn("DTI (REAL)", format="%.0f%%"),
+            "LTV": st.column_config.NumberColumn("LTV (REAL)", format="%.0f%%"),
+            "Ahorro": st.column_config.NumberColumn("Ahorro (REAL)", format="dollar",
+                                                     help="Saldo de ahorro. Moneda de la fuente sin especificar."),
         },
     )
     filas = seleccion.selection.rows if seleccion else []

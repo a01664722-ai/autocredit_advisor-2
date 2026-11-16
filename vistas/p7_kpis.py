@@ -221,7 +221,8 @@ else:
     st.stop()
 
 with st.expander("Metodología y trazabilidad de estos indicadores"):
-    st.dataframe(pd.DataFrame(metodologia), hide_index=True)
+    st.dataframe(pd.DataFrame(metodologia), hide_index=True,
+                 column_order=["KPI", "Fórmula", "Origen"])
     st.caption(
         "Ninguna tarjeta utiliza resultados de un supuesto modelo campeón. "
         "Las métricas de predicción (TP/FP/FN/TN, matriz de confusión, ROC, AUC, KS) "

@@ -141,13 +141,33 @@ with c3, st.container(border=True):
 
 with c4, st.container(border=True):
     ui.titulo_grafica("Expediente: solo lo que la decisión necesita", "REAL")
+
+    def _numero_tabla(variable, valor):
+        numero = pd.to_numeric(valor, errors="coerce")
+        return numero * 100 if C.FORMATO.get(variable) == "pct" else numero
+
+    def _unidad_tabla(variable):
+        return {"SAVINGS_BALANCE": "$ · moneda no especificada",
+                "MISSED_PAYMENTS_12M": "pagos", "DELINQ_90": "atrasos",
+                "YEARS_CREDIT_HISTORY": "años", "BANKRUPTCY_FLAG": "0/1"}.get(
+                    variable, "%" if C.FORMATO.get(variable) == "pct" else "puntos")
+
     exp = pd.DataFrame({
         "Variable": [C.ETIQUETAS[v] for v in modelo.variables],
-        "Valor": [datos.formatear(v, fila[v]) + (" · IMPUTADO" if v in ev.imputados else "")
-                  + (" · FUERA DE RANGO" if v in ev.fuera_rango else "") for v in modelo.variables],
-        "Típico buen pagador": [datos.formatear(v, modelo.mediana_buenos[v]) for v in modelo.variables],
+        "Valor": [_numero_tabla(v, fila[v]) for v in modelo.variables],
+        "Unidad": [_unidad_tabla(v) for v in modelo.variables],
+        "Típico buen pagador": [_numero_tabla(v, modelo.mediana_buenos[v]) for v in modelo.variables],
+        "Estado": ["FUERA DE RANGO" if v in ev.fuera_rango else
+                   "IMPUTADO" if v in ev.imputados else "REAL" for v in modelo.variables],
     })
-    st.dataframe(exp, hide_index=True, height=388)
+    st.dataframe(exp, hide_index=True, column_order=list(exp.columns), height=388,
+                 column_config={
+                     "Valor": st.column_config.NumberColumn("Valor (REAL)", format="%.2f"),
+                     "Típico buen pagador": st.column_config.NumberColumn(
+                         "Típico buen pagador (CALCULADO)", format="%.2f"),
+                     "Unidad": st.column_config.TextColumn("Unidad"),
+                     "Estado": st.column_config.TextColumn("Estado (CALCULADO)"),
+                 })
     ocultos = [f["dato"] for f in MATRIZ_DATOS if f["analista"] == OCULTO and f["grupo"] != "Calculado"]
     st.caption("Ocultos por política (no cambian la decisión o filtrarían el resultado): " + ", ".join(ocultos) + ".")
 

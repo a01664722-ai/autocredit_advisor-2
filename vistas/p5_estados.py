@@ -198,6 +198,6 @@ with tab_cat:
         ("Base ausente o inválida", "Todas", "Falta el CSV o columnas esperadas", "Mensaje sin traceback",
          "Colocar el CSV en data/ y Reintentar", "Renombrar el CSV"),
     ], columns=["Estado", "Pantalla · persona", "Disparador", "Qué ve la persona", "Recuperación", "Cómo verlo"])
-    st.dataframe(catalogo, hide_index=True, height=560)
+    st.dataframe(catalogo, hide_index=True, column_order=list(catalogo.columns), height=560)
     st.caption("Estos estados se diseñaron antes de programar: cada filtro, carga o dato faltante tiene una pantalla "
                "definida en lugar de una gráfica vacía.")

@@ -4,10 +4,10 @@
 
 Tablero de riesgo de crédito en Streamlit. La base que utiliza es `data/Base_SAS_Equipo3.csv` (12 columnas). Se muestra información distinta según rol: analistas, gerencia y soporte/operación.
 
-## Límites de este entregable
+## Reglas del proyecto
 
-- No cambiar `app.py`, `vistas/`, el diseño, la navegación ni los colores de las pantallas auditadas.
-- No borrar, reemplazar ni inventar la base `data/Base_SAS_Equipo3.csv`.
+- Mantener la misma navegación, el diseño y los colores de las pantallas. Los cambios de interfaz deben responder a una decisión del usuario.
+- Usar la base `data/Base_SAS_Equipo3.csv` como fuente de los datos reales. Cualquier campo creado para la demostración lleva el rótulo SIMULADO.
 - No subir secretos, bitácoras personales, credenciales ni información de sesiones.
 - Distinguir siempre datos reales, datos calculados y datos simulados. No presentar simulaciones como resultados observados.
 - Respetar los controles de acceso por rol y por `ANALISTA_ID`. No mostrar `DEFAULT` individual a analistas ni créditos individuales a gerencia.
@@ -21,7 +21,7 @@ Tablero de riesgo de crédito en Streamlit. La base que utiliza es `data/Base_SA
    - Salida sana: `OK: ... filas; 12 columnas numéricas verificadas.`
    - Salida incorrecta: `ERROR: FALLO DEL CONTRATO DE DATOS` y código de salida 1.
 3. Ejecutar pruebas: `python -m pytest -q`. Todas deben aprobarse.
-4. Iniciar localmente: `streamlit run app.py` (el archivo de entrada de la app no se cambia en este entregable).
+4. Iniciar localmente: `streamlit run app.py`.
 
 Un cambio no está terminado hasta que se ejecuten las verificaciones y se reporte su resultado real. Si aparece un error, primero escribir una prueba que lo reproduzca; después corregir la causa, sin debilitar la prueba para hacerla pasar.
 

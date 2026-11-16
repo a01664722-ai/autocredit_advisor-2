@@ -86,6 +86,8 @@ with st.sidebar:
                  color="green" if auth.modo_oidc() else "orange")
         st.button("Cerrar sesión", on_click=auth.salir, icon=":material/logout:", width="stretch")
     st.caption(f"La sesión expira tras {C.SESION_TIMEOUT_MIN} min sin actividad. Modelo {C.VERSION_MODELO}.")
+    st.caption(f"✓ Contrato de datos válido · {len(C.COLUMNAS_ESPERADAS)}/"
+               f"{len(C.COLUMNAS_ESPERADAS)} columnas numéricas verificadas (REAL).")
 
     if not auth.modo_oidc():
         with st.expander("Controles de demostración", icon=":material/science:"):

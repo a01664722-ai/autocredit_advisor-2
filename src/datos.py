@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from src import config as C
+from scripts.verificar_contrato import ErrorContrato, MARCADORES_AUSENCIA, validar_archivo
 
 
 class ErrorDeDatos(Exception):
@@ -19,7 +20,16 @@ def leer_base(ruta: Path = C.RUTA_DATOS) -> pd.DataFrame:
             f"No se encontró la base en «{Path(ruta).relative_to(C.RAIZ) if Path(ruta).is_relative_to(C.RAIZ) else ruta}». "
             "Copia Base_SAS_Equipo3.csv dentro de la carpeta data/."
         )
-    df = pd.read_csv(ruta)
+    try:
+        validar_archivo(Path(ruta))
+    except ErrorContrato as exc:
+        raise ErrorDeDatos(str(exc)) from exc
+    # Los marcadores de ausencia se convierten a NaN; nunca a cero.
+    marcadores = sorted(MARCADORES_AUSENCIA | {m.lower() for m in MARCADORES_AUSENCIA})
+    df = pd.read_csv(ruta, na_values=marcadores, keep_default_na=True)
+    texto = [col for col in C.COLUMNAS_ESPERADAS if not pd.api.types.is_numeric_dtype(df[col])]
+    if texto:
+        raise ErrorDeDatos("Columnas numéricas recibidas como texto: " + ", ".join(texto))
     problemas = validar_esquema(df)
     if problemas:
         raise ErrorDeDatos("La base no trae el esquema esperado: " + "; ".join(problemas))

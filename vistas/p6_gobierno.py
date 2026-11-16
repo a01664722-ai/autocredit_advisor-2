@@ -45,6 +45,7 @@ with tab_dato:
     st.table(vista.style.map(_color, subset=personas))
     conteo = matriz[personas].apply(pd.Series.value_counts).fillna(0).astype(int)
     conteo.columns = ["Adrián", "Mariana", "Luis"]
+    conteo = conteo.rename_axis("Nivel").reset_index()
     c1, c2 = st.columns([1.3, 1])
     with c1:
         st.markdown(
@@ -59,7 +60,7 @@ with tab_dato:
             "ANALISTA_ID en el servidor).")
     with c2:
         st.markdown("**Cuántos datos ve cada persona por nivel**")
-        st.dataframe(conteo, height=260)
+        st.dataframe(conteo, height=260, hide_index=True, column_order=list(conteo.columns))
     st.caption("Cómo se aplica en código: `seguridad.aplicar_politica_fila()` recorta la fila que recibe la ficha de "
                "Adrián; `servicios.*` verifica `puede_agregado()` antes de entregar cualquier tasa a Mariana o Luis; "
                "la bitácora que ve Luis pasa por `enmascarar()`. Las pruebas en tests/test_seguridad.py lo verifican.")
@@ -67,7 +68,8 @@ with tab_dato:
 with tab_pant:
     st.markdown("**Matriz persona × pantalla.** La navegación solo muestra lo permitido y cada pantalla vuelve a "
                 "verificar el rol antes de cargar datos.")
-    st.dataframe(matriz_pantallas(), hide_index=True)
+    pantallas = matriz_pantallas()
+    st.dataframe(pantallas, hide_index=True, column_order=list(pantallas.columns))
     st.markdown("**Menor privilegio: lo que cada persona NO ve**")
     a, m, l = st.columns(3)
     with a, st.container(border=True):
@@ -90,14 +92,17 @@ with tab_filtros:
                              "Decisión que cambia": f["decision"],
                              "Por defecto": ", ".join(f["defecto"]) if isinstance(f["defecto"], list) else f["defecto"],
                              "Origen": f["origen"]} for fid, f in C.FILTROS.items()])
-    st.dataframe(filtros, hide_index=True, column_config={"Decisión que cambia": st.column_config.TextColumn(width="large")})
+    st.dataframe(filtros, hide_index=True, column_order=list(filtros.columns),
+                 column_config={"Decisión que cambia": st.column_config.TextColumn(width="large")})
     st.markdown("**Controles de vista** (no filtran registros, pero cambian lo que la persona compara)")
     controles = pd.DataFrame([{"ID": cid, "Control": c["nombre"], "Pantalla": c["pantalla"], "Persona": c["persona"],
                                "Decisión que cambia": c["decision"], "Por defecto": str(c["defecto"]),
                                "Origen": c["origen"]} for cid, c in C.CONTROLES.items()])
-    st.dataframe(controles, hide_index=True, column_config={"Decisión que cambia": st.column_config.TextColumn(width="large")})
+    st.dataframe(controles, hide_index=True, column_order=list(controles.columns),
+                 column_config={"Decisión que cambia": st.column_config.TextColumn(width="large")})
     st.markdown("**Filtros descartados y por qué**")
-    st.dataframe(pd.DataFrame(C.FILTROS_DESCARTADOS, columns=["Campo", "Razón"]), hide_index=True)
+    st.dataframe(pd.DataFrame(C.FILTROS_DESCARTADOS, columns=["Campo", "Razón"]),
+                 hide_index=True, column_order=["Campo", "Razón"])
     st.markdown(f"**Corte activo visible:** siempre arriba de las gráficas, en una línea, con n REAL y botón "
                 f"Restablecer. **Selección vacía:** KPI en «—» (no 0%) y botón «Quitar último filtro». "
                 f"**Muestra chica:** n < {C.N_MINIMO} se pinta gris con «muestra insuficiente».")
@@ -121,7 +126,8 @@ with tab_origen:
             ("DECISION_ANALISTA", "Categoría (3)", "G8, G10 · acuerdo modelo–analista (ya se registra en la bitácora)", "Luis"),
             ("MOTIVO_OVERRIDE", "Catálogo + texto", "Auditoría de overrides", "Luis · Mariana"),
             ("FECHA_CARGA", "Fecha-hora", "Frescura de datos (P4)", "Luis"),
-        ], columns=["Dato", "Tipo", "Qué habilita", "Persona"]), hide_index=True)
+        ], columns=["Dato", "Tipo", "Qué habilita", "Persona"]),
+                     hide_index=True, column_order=["Dato", "Tipo", "Qué habilita", "Persona"])
         st.markdown("**Base REAL usada:** `Base_SAS_Equipo3.csv` · 80,000 créditos × 12 columnas · DEFAULT = 10,783 "
                     "(13.48%) · sin nulos. El PDF del prototipo describía 100,000 × 83; esta versión usa solo lo que "
                     "trae la base y rotula SIMULADO lo demás.")

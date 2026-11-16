@@ -26,7 +26,7 @@ No encontramos en estos prompts evidencia clara de uso del asistente en **Plan**
 La lección *Give Claude a feedback loop* propone siete pasos. Tres se pueden adoptar esta semana sin infraestructura nueva:
 
 1. **Una sola orden de verificación que falle si algo está mal.** Ya la tenemos: `pytest`, que sale con código distinto de cero cuando una prueba falla. Falta usarla siempre.
-2. **Documentar esa orden en `CLAUDE.md` y hacerla parte de «terminado».** El curso pide escribir en `CLAUDE.md` qué órdenes existen, cómo se ve una salida sana y la instrucción de correrlas y pegar el resultado antes de reportar que algo está listo. Antes de este entregable no existía `CLAUDE.md` en el repositorio.
+2. **Documentar esa orden en `CLAUDE.md` y hacerla parte de «terminado».** El archivo reúne los comandos, el resultado esperado y la regla de verificarlos antes de dar por concluida una tarea.
 3. **Corregir errores con la prueba primero.** Cuando aparezca un error, primero se escribe una prueba que lo reproduce y falla. Esa prueba se guarda, y después se le pide al asistente que la haga pasar sin editarla.
 
 La pregunta de la semana era cómo separar las reglas que no pueden depender de que el asistente haga caso de las que sí, porque tienen excepciones. El curso da el criterio en la lección de Test: **las garantías van en controles deterministas (hooks o CI); la guía sobre cómo trabajar va en instrucciones (`CLAUDE.md`)**. Aplicado a nuestro proyecto:

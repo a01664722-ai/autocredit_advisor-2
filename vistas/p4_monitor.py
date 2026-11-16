@@ -271,10 +271,12 @@ with tab_salud:
     with b, st.container(border=True):
         ui.titulo_grafica("Peso global de cada variable", "CALCULADO")
         coef = modelo.coeficientes.assign(
-            **{"Efecto de +1 desv. estándar": lambda d: d["odds_ratio_1sd"].map(lambda x: f"×{x:.2f} en momios"),
+            **{"Efecto de +1 desv. estándar": lambda d: d["odds_ratio_1sd"],
                "Dirección": lambda d: np.where(d["coef_std"] > 0, "sube el riesgo", "baja el riesgo")})
         st.dataframe(coef[["etiqueta", "Dirección", "Efecto de +1 desv. estándar"]].rename(columns={"etiqueta": "Variable"}),
-                     hide_index=True)
+                     hide_index=True, column_order=["Variable", "Dirección", "Efecto de +1 desv. estándar"],
+                     column_config={"Efecto de +1 desv. estándar": st.column_config.NumberColumn(
+                         "Efecto en momios (CALCULADO)", format="×%.2f")})
         auc_con = servicios.auc_con_variable_excluida()
         st.caption(f"Excluida por equidad: FINANCIAL_LITERACY_SCORE. AUC con ella {auc_con:.4f} vs. sin ella "
                    f"{m['auc']:.4f} (diferencia {(auc_con - m['auc']):+.4f}). {C.EXCLUIDAS_DEL_MODELO['FINANCIAL_LITERACY_SCORE']}")
@@ -287,7 +289,8 @@ with tab_bitacora:
     else:
         st.dataframe(bit[["ts", "metrica", "valor", "accion", "tipo", "nota", "usuario"]].rename(
             columns={"ts": "Hora", "metrica": "Métrica", "valor": "Valor", "accion": "Acción", "tipo": "Tipo",
-                     "nota": "Nota", "usuario": "Responsable"}), hide_index=True)
+                     "nota": "Nota", "usuario": "Responsable"}), hide_index=True,
+                     column_order=["Hora", "Métrica", "Valor", "Acción", "Tipo", "Nota", "Responsable"])
     st.markdown("**Decisiones de analistas** · folio enmascarado, sin analista ni texto libre (matriz F)")
     dec = almacen.decisiones()
     if dec.empty:
@@ -296,15 +299,21 @@ with tab_bitacora:
         st.dataframe(pd.DataFrame({
             "Hora": dec["ts"], "Folio": dec["folio"].map(enmascarar), "Decisión": dec["decision"],
             "Sugerencia del modelo": dec["sugerencia"], "Categoría": dec["categoria"],
-            "Motivo (catálogo)": dec["motivo"].fillna("—"), "PD": dec["pd"].map(pct),
-        }), hide_index=True)
+            "Motivo (catálogo)": dec["motivo"].fillna("—"),
+            "PD": pd.to_numeric(dec["pd"], errors="coerce") * 100,
+        }), hide_index=True,
+                     column_order=["Hora", "Folio", "Decisión", "Sugerencia del modelo", "Categoría",
+                                   "Motivo (catálogo)", "PD"],
+                     column_config={"PD": st.column_config.NumberColumn(
+                         "PD (CALCULADO)", format="%.1f%%")})
 
 with tab_vigilo:
     st.markdown("Adrián y Mariana abren el tablero con una pregunta y lo cierran al tener la respuesta. Luis no trae "
                 "pregunta: deja el monitor abierto y la pantalla le dice qué cambió.")
     st.dataframe(pd.DataFrame(C.METRICAS_MONITOR).rename(columns={
         "metrica": "Qué vigila", "banda": "Umbral / banda", "frecuencia": "Frecuencia", "accion": "Si se sale",
-        "origen": "Origen"}), hide_index=True)
+        "origen": "Origen"}), hide_index=True,
+        column_order=["Qué vigila", "Umbral / banda", "Frecuencia", "Si se sale", "Origen"])
     st.caption("Ritmo: la pantalla se refresca sola cada 15 min, Luis la revisa activamente cada hora y cierra el día "
                "a las 18:00. Umbrales propuestos por el equipo; se calibran con datos reales.")
 
