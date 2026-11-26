@@ -1,4 +1,4 @@
-# Instrucciones de trabajo · AutoCredit Advisor
+# Instrucciones proyecto AutoCredit Advisor
 
 ## Qué es este proyecto
 
