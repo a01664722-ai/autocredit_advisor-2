@@ -27,7 +27,7 @@ QUESTIONS = {
         "¿Qué proporción de decisiones fue aceptar, condicionar o rechazar?",
         "¿Cuántos casos se atendieron por nivel de riesgo frente a la meta?",
         "¿Qué tan cerca están los indicadores de procedimiento de sus metas?",
-        "¿Qué analista está más cerca de la meta del KPI elegido?",
+        "¿Qué nivel de riesgo o cumplimiento presenta cada analista?",
         "¿Cómo evoluciona el número de decisiones por analista durante el mes?",
         "¿Qué niveles de riesgo atiende cada analista?",
     ),
