@@ -52,15 +52,10 @@ def css_text_colors(path: str) -> list[tuple[str, str]]:
 
 def used_chart_colors(path: str) -> list[str]:
     text = (ROOT / path).read_text(encoding="utf-8")
-    # Traza los colores literales de líneas/barras, no los fondos decorativos.
-    patterns = (
-        r"(?:marker_color|line_color)\s*=\s*['\\"](#[0-9a-fA-F]{6})",
-        r"line\s*=\s*dict\(color\s*=\s*['\\"](#[0-9a-fA-F]{6})",
-    )
-    colors = []
-    for pattern in patterns:
-        colors.extend(re.findall(pattern, text))
-    return colors
+    # Colores de marcadores y líneas informativas, no colores de fondos decorativos.
+    marker_or_line = r"(?:marker_color|line_color)\s*=\s*.{0,3}(#[0-9a-fA-F]{6})"
+    line_dict = r"line\s*=\s*dict\(color\s*=\s*.\s*(#[0-9a-fA-F]{6})"
+    return re.findall(marker_or_line, text) + re.findall(line_dict, text)
 
 
 def check_palette() -> list[str]:
