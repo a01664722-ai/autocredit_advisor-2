@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from src.accessibility_theme import render_accessible_chart
 
 from src import store
 from src.kpi_views import ANALYSTS
@@ -93,7 +94,7 @@ def format_executive_chart(fig,height=380,horizontal=False):
 
 def _fig(fig,height=380,horizontal=False):
     format_executive_chart(fig,height=height,horizontal=horizontal)
-    st.plotly_chart(fig,use_container_width=True,
+    render_accessible_chart(fig,use_container_width=True,
                     config={"displayModeBar":False,"responsive":True})
 
 
