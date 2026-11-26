@@ -84,9 +84,13 @@ def _risk_primary_card(spec, value, targets, assigned=None):
     Las cuatro tarjetas comparten monthly_summary.
     """
     key, label, kind, description = spec
-    if key in KPI_MAP:
+    if key in KPI_MAP or key == "Prioridad riesgo alto":
         goal = _goal_value(targets, key)
-        return _metric_card(KPI_MAP[key], value, goal, assigned=assigned)
+        if key == "Prioridad riesgo alto" and key not in KPI_MAP:
+            spec = (key, label, "rate", 0.60, description)
+        else:
+            spec = KPI_MAP[key]
+        return _metric_card(spec, value, goal, assigned=assigned)
     return (
         '<div class="ac-month-card" style="--ac-color:#56dca0;--ac-bg:rgba(38,49,43,.2)">'
         f'<div class="label">{html.escape(label)}</div>'
@@ -130,7 +134,25 @@ def _chart(fig,height=340):
 
 
 def _goal_value(targets,key):
-    return float(targets.get(key,KPI_MAP[key][3]))
+    # El KPI prioritario puede venir de una versión previa en memoria.
+    default = 0.60 if key == "Prioridad riesgo alto" else KPI_MAP[key][3]
+    return float(targets.get(key,default))
+
+
+def _fmt_priority(value):
+    return f"{value:.1%}" if value is not None else "—"
+
+
+def _monthly_metric(stats, key):
+    """Siempre deriva prioridad de los conteos operativos existentes.
+
+    Streamlit puede mantener durante el redeploy una instancia antigua del
+    módulo mensual que aún no incluya metrics['Prioridad riesgo alto'].
+    """
+    if key == "Prioridad riesgo alto":
+        count = stats["count"]
+        return stats["metrics"]["Riesgo alto atendido"] / count if count else None
+    return stats["metrics"][key]
 
 
 def render_analyst_month(name,analyst_id,score_df):
@@ -151,7 +173,7 @@ def render_analyst_month(name,analyst_id,score_df):
     for col, spec in zip(primary_cols, RISK_HEADLINES):
         key = spec[0]
         with col:
-            st.markdown(_risk_primary_card(spec, stats["metrics"][key], targets,
+            st.markdown(_risk_primary_card(spec, _monthly_metric(stats,key), targets,
                                             assigned=stats["assigned"]),
                         unsafe_allow_html=True)
     st.caption("Atención prioritaria de riesgo alto = solicitudes atendidas este mes con sugerencia "
@@ -171,7 +193,7 @@ def render_analyst_month(name,analyst_id,score_df):
         for start in (0,3):
             cols=st.columns(3,gap="small")
             for col,spec in zip(cols,KPI_SPECS[start:start+3]):
-                key=spec[0];v=stats["metrics"][key];goal=_goal_value(targets,key)
+                key=spec[0];v=_monthly_metric(stats,key);goal=_goal_value(targets,key)
                 with col:
                     st.markdown(_metric_card(spec,v,goal),unsafe_allow_html=True)
         st.caption("Semáforos de metas: rojo <50%, ámbar 50–99%, verde ≥100%. "
@@ -296,8 +318,8 @@ def render_manager_month(manager, score_df=None):
                     unsafe_allow_html=True)
                 cols_top=st.columns(2,gap="small")
                 cols_top[0].metric("Atención prioritaria · vs meta",
-                                   f'{fmt("Prioridad riesgo alto", stats["metrics"]["Prioridad riesgo alto"])} / '
-                                   f'{fmt("Prioridad riesgo alto", _goal_value(targets,"Prioridad riesgo alto"))}',
+                                   f'{_fmt_priority(_monthly_metric(stats,"Prioridad riesgo alto"))} / '
+                                   f'{_fmt_priority(_goal_value(targets,"Prioridad riesgo alto"))}',
                                    help="De las decisiones de este mes, proporción con sugerencia de riesgo alto. La meta la define gerencia; no mide incumplimiento.")
                 cols_top[1].metric("Casos alto riesgo",
                                    f'{stats["metrics"]["Riesgo alto atendido"]:,}')
@@ -319,16 +341,18 @@ def render_manager_month(manager, score_df=None):
                           format_func=lambda k: (RISK_MAP[k][1] if k in RISK_MAP
                                                  else KPI_MAP[k][1]),
                           key="manager_kpi_selected")
-    has_goal = selected in KPI_MAP
+    has_goal = selected in KPI_MAP or selected == "Prioridad riesgo alto"
     goal = _goal_value(targets,selected) if has_goal else None
     ranks=[]
     for person,aid,_initials in ANALYSTS:
-        value=summaries[aid]["metrics"][selected]
+        value=_monthly_metric(summaries[aid],selected)
         advancement=progress(value,goal) if has_goal else None
-        shown=fmt(selected,value) if has_goal else fmt_risk(selected,value)
+        shown=(_fmt_priority(value) if selected=="Prioridad riesgo alto"
+               else fmt(selected,value) if has_goal else fmt_risk(selected,value))
         ranks.append({"Analista":person,"ID":aid,
                       "Resultado":shown,
-                      "Meta":fmt(selected,goal) if has_goal else "Indicador informativo",
+                      "Meta":(_fmt_priority(goal) if selected=="Prioridad riesgo alto"
+                              else fmt(selected,goal) if has_goal else "Indicador informativo"),
                       "Avance":f'{advancement:.0%}' if advancement is not None else "—",
                       "Estado":("Sin base" if has_goal and advancement is None else
                                 "Meta lograda" if has_goal and advancement>=1 else
@@ -344,7 +368,7 @@ def render_manager_month(manager, score_df=None):
                (selected in KPI_MAP and KPI_MAP[selected][2]=="rate"))
     mult=100 if is_rate else 1
     for person,aid,_ in ANALYSTS:
-        value=summaries[aid]["metrics"][selected]
+        value=_monthly_metric(summaries[aid],selected)
         fig.add_trace(go.Bar(
             x=[person.split()[0]],y=[value*mult if value is not None else None],
             name=person.split()[0],marker_color=analyst_color(aid),
