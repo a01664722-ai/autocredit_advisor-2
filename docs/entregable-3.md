@@ -73,3 +73,14 @@ Ambos filtros realmente actualizan `filtrada`. La interfaz muestra **«N resulta
 **Limitación explícita:** selección de perfiles **sin verificar identidad**; es una rebanada funcional de demostración, no autenticación institucional ni RBAC seguro para datos reales. La URL es pública y los datos son sintéticos. No hay contraseñas en GitHub.
 
 **Defensa en vivo:** entrar como Adrián, mostrar P1/P2; salir y entrar como Mariana para mostrar pantallas distintas; repetir con Sofía para observar separación de Loan ID; vaciar filtros en P1 para mostrar el estado y `st.stop()`.
+
+
+### Anexo · Última observación del profesor: riesgo crediticio por encima de productividad
+
+Se preservan **las seis secciones obligatorias anteriores** y sus evidencias. La última retroalimentación se atendió sin reentrenar el modelo ni modificar la política, con **tres KPI de riesgo y uno de productividad** que aparecen y se calculan igual en P1, Mis indicadores y gerencia: (1) exposición monetaria evaluada en casos de alto riesgo, (2) casos de alto riesgo atendidos, (3) PD promedio de las solicitudes revisadas y (4) decisiones del mes.
+
+Los dos indicadores de riesgo que aumentan con volumen/PD no se consideran metas de desempeño; son señales para gestionar exposición. El conteo de riesgo y productividad mantiene metas de gerencia, sincronizadas en SQLite. No se utiliza incumplimiento observado `DEFAULT` para puntuar analistas.
+
+**Metodología, fórmulas, limitaciones, enlaces de código y pruebas:** [`docs/kpis-riesgo-integracion.md`](kpis-riesgo-integracion.md), y [`tests/test_risk_kpi_integration.py`](../tests/test_risk_kpi_integration.py).
+
+**Menú de Decisión rápida:** contorno neón con `#52dc9a` existente, sin cambiar valores ni categorías de decisión. El aspecto desplegado debe comprobarse visualmente en Streamlit tras el despliegue.
