@@ -13,7 +13,7 @@ from sklearn.calibration import calibration_curve
 
 from src.engine import bases, entrenar, COLS, LABELS, PERCENT, formato, sugerencia
 from src import store
-from src.monthly_kpis import monthly_summary, level
+from src.monthly_kpis import monthly_summary, level, fmt_risk
 from src.kpi_views import render_analyst_month, render_manager_month
 from src.message_views import render_messages
 from src.profile_state import (
@@ -56,6 +56,20 @@ h1{font-size:1.65rem!important;line-height:1.2!important} h2{font-size:1.3rem!im
  div[data-baseweb="popover"] [role="option"][aria-selected="true"]{
    background:#244636!important;color:#eff8f1!important
  }
+ /* Corrección observada en la defensa: el popup del editor se confunde con la tabla.
+    Trazo visible con el VERDE ORIGINAL (#52dc9a); sin alterar las celdas ni sus colores.
+    Streamlit usa Glide Data Grid: cubrimos su portal y el selector BaseWeb. */
+ .gdg-portal [role="listbox"],
+ .gdg-portal [class*="dropdown"],
+ [data-baseweb="popover"] [role="listbox"],
+ [data-baseweb="menu"],
+ [role="listbox"]{
+   outline:2px solid #52dc9a!important;
+   outline-offset:1px!important;
+   border-radius:8px!important;
+   box-shadow:0 0 0 1px #52dc9a,0 0 13px rgba(82,220,154,.55)!important;
+ }
+ .gdg-portal{z-index:100000!important}
 section[data-testid="stSidebar"]{width:270px!important}
 [data-testid="stVerticalBlock"]{gap:.75rem}
 </style>''',unsafe_allow_html=True)
@@ -324,26 +338,22 @@ if page == 'Bandeja':
     pendientes = total - resueltas
     priorizadas = int(todos['SUGERENCIA'].eq('Rechazar').sum())
 
-    # KPI mensuales: fuente única del estado gerencial y decisiones registradas.
+    # Cuatro KPI principales: 3 riesgos crediticios + 1 productividad.
+    # Mismo resumen de SQLite+TEST que usan Mis indicadores y gerencia.
     metas_gerencia = store.targets()
-    mensual = monthly_summary(decisiones, analyst_id)
+    mensual = monthly_summary(decisiones, analyst_id, scored=M.scores)
+    monto_alto = fmt_risk("Exposición alto riesgo evaluada",
+                          mensual["metrics"]["Exposición alto riesgo evaluada"])
+    casos_alto = mensual["metrics"]["Riesgo alto atendido"]
+    pd_media = fmt_risk("PD promedio evaluada", mensual["metrics"]["PD promedio evaluada"])
+    meta_alto = float(metas_gerencia.get("Riesgo alto atendido", 15))
     meta_mensual = float(metas_gerencia.get("Decisiones mensuales", 50))
     decisiones_mes = mensual["count"]
     avance_mes = decisiones_mes / meta_mensual
     semaforo_mes = level(decisiones_mes, meta_mensual)
-    meta_justificacion = float(metas_gerencia.get("Con justificación", 1.0))
-    tasa_justificacion = mensual["metrics"]["Con justificación"]
-    semaforo_justificacion = level(tasa_justificacion, meta_justificacion)
-    if tasa_justificacion is None:
-        valor_justificacion = "—"
-        detalle_justificacion = f"Sin excepciones en el mes · meta {meta_justificacion:.0%}"
-    else:
-        valor_justificacion = f"{tasa_justificacion:.0%}"
-        detalle_justificacion = (
-            f'{mensual["justified"]} de {mensual["overrides"]} excepciones · '
-            f'meta mensual {meta_justificacion:.0%}'
-        )
-
+    semaforo_alto = level(casos_alto, meta_alto)
+    estado_monto = "Monto no disponible para estos Loan ID" if monto_alto == "—" else (
+        "Monto de solicitudes evaluadas con sugerencia Rechazar · no son pérdidas")
     st.markdown(f"""
     <div class="ac-p1-head">
       <div class="ac-p1-eyebrow">AutoCredit Advisor · Operación crediticia</div>
@@ -352,19 +362,24 @@ if page == 'Bandeja':
       Préstamos originales de TEST, predichos por XGBoost (12 variables). La asignación a analistas es demostrativa.</div>
     </div>
     <div class="ac-p1-kpis">
-      <div class="ac-p1-kpi blue"><div class="name">Solicitudes asignadas</div>
-        <div class="number">{total:,}</div><div class="detail">Registros de TEST bajo este perfil*</div></div>
-      <div class="ac-p1-kpi amber"><div class="name">Pendientes de decisión</div>
-        <div class="number">{pendientes:,}</div><div class="detail">Aún sin decisión registrada</div></div>
-      <div class="ac-p1-kpi {semaforo_mes}"><div class="name">Decisiones registradas · mes</div>
+      <div class="ac-p1-kpi blue"><div class="name">Exposición de alto riesgo · u.m.</div>
+        <div class="number">{monto_alto}</div>
+        <div class="detail">{estado_monto}*</div></div>
+      <div class="ac-p1-kpi {semaforo_alto}"><div class="name">Casos de alto riesgo atendidos</div>
+        <div class="number">{casos_alto:,} / {int(meta_alto):,}</div>
+        <div class="detail">XGBoost sugirió Rechazar · meta mensual gerencia*</div></div>
+      <div class="ac-p1-kpi amber"><div class="name">PD promedio evaluada</div>
+        <div class="number">{pd_media}</div>
+        <div class="detail">Promedio de PD XGBoost de las decisiones del mes · no es default observado</div></div>
+      <div class="ac-p1-kpi {semaforo_mes}"><div class="name">Decisiones del mes · productividad</div>
         <div class="number">{decisiones_mes:,} / {int(meta_mensual):,}</div>
         <div class="detail">Meta mensual de gerencia* · {avance_mes:.0%} de avance</div></div>
-      <div class="ac-p1-kpi {semaforo_justificacion}"><div class="name">Excepciones justificadas · mes</div>
-        <div class="number">{valor_justificacion}</div>
-        <div class="detail">{detalle_justificacion}*</div></div>
     </div>
     """, unsafe_allow_html=True)
 
+    st.caption(f'Bandeja: {total:,} solicitudes asignadas* · {pendientes:,} pendientes · '
+               f'{resueltas:,} con decisión registrada. Los KPI superiores corresponden '
+               'a las decisiones del mes y no a toda la cartera pendiente.')
     st.markdown(
         f'<div class="ac-p1-inline"><b>{priorizadas:,}</b> casos clasificados para rechazo '
         f'por la política vigente · Aceptar bajo <b>{M.corte_base:.2%}</b> '
@@ -1188,7 +1203,7 @@ elif page=='Métricas del área':
     
 
 elif page=='Analistas y KPI':
-    render_manager_month(name)
+    render_manager_month(name, M.scores)
     footnote()
 
 elif page=='Centro de soporte':
