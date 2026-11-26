@@ -1,3 +1,21 @@
+https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/
+
+# AutoCredit Advisor · Equipo 3 · Entregables 1–3
+
+**App de la presentación:** `app_v3.py` de la rama `v3-integracion-xgboost-12v`, con XGBoost de 12 variables, TRAIN/TEST y perfiles de Adrián, Sofía, Mariana y Soporte. **Verifica en Streamlit Cloud que el despliegue apunte a esa rama y archivo**; el repositorio conserva `app.py` de una versión previa.
+
+| Entrega | Evidencia de este repositorio |
+|---|---|
+| **B1 · Plan / Design** | [Contrato del prompt](contrato-prompt.md), [registro B1](prompts/B1.md), [observaciones del profesor](docs/entregable-1.md) |
+| **B2 · Build / Test** | [Contrato de datos](contrato-datos.md), [investigación de Anthropic](investigacion/claude.md), [registro B2](prompts/B2.md), [pruebas y evidencia](docs/entregable-2.md) |
+| **B3 · Accesibilidad y roles** | [Ficha con seis secciones](docs/entregable-3.md), [investigación 1](investigacion/1-user-persona.md), [investigación 3](investigacion/B3.md), [registro B3](prompts/B3.md) |
+
+**Automatización de B3:** `python scripts/check_contrast_b3.py` (contrastes de paleta V3) y `python -m pytest -q` (pruebas). Se ejecutan en [GitHub Actions](.github/workflows/check_dashboard.yml). Los colores, umbrales, modelos, datos y decisiones permanecen sin cambios.
+
+**Seguridad:** acceso por perfiles **de demostración**, no autenticación institucional; la URL pública y el conjunto sintético no deben usarse para evaluar solicitantes reales.
+
+---
+
 # AutoCredit Advisor · Dashboard en Streamlit
 
 Tablero de riesgo de crédito automotriz para tres personas sobre el mismo dato:
