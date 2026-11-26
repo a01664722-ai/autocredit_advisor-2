@@ -1,83 +1,75 @@
-https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/43804791814
+https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/45741820563
 
-# Entregable 3 · Evidencia de despliegue, jerarquía y acceso
+# Entregable 3 · Evidencia de la versión XGBoost V3
 
-**Advertencia sobre primera línea:** la URL superior corresponde a un **CI verde de validación del CSV y pytest** previo a este documento. **No demuestra el contraste WCAG**: ese control todavía NO forma parte del pipeline y permanece como pendiente. No se etiqueta indebidamente una corrida anterior como prueba de accesibilidad.
+**Aplicación:** https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/  
+**Código auditado:** rama `v3-integracion-xgboost-12v`, entrada `app_v3.py`. **Primera línea:** corrida verde real del workflow de V3 que ejecuta contraste WCAG y pytest. La evidencia deberá volver a comprobarse antes de entregar si se modifica el código.
 
-**Repositorio definitivo:** https://github.com/a01664722-ai/autocredit_advisor-2  
-**Dashboard público:** https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/
+## 1. Gráficas y preguntas visibles
 
-**Alcance:** la documentación audita `main`, la base de Build/Test de B1–B2. El dashboard de XGBoost presentado por el equipo tiene código adicional en la rama `v3-integracion-xgboost-12v`; `main` aún usa el modelo `PD-logit v1.0` en `src/config.py`. No se afirma que sean idénticos ni se cambian componentes para ocultar esa diferencia.
-
-## 1. Gráficas: pregunta que responde cada visualización
-
-| Visualización | Persona / pantalla | Pregunta de negocio | Evidencia |
-|---|---|---|---|
-| G1 · Barra de PD/corte | Adrián, P2 | ¿La PD está arriba o abajo del corte? | `vistas/p2_ficha.py`; `src/graficas.py:g1_barra_corte` |
-| G2 · Contribuciones | Adrián, P2 | ¿Qué variables suben o bajan el riesgo de este caso? | `vistas/p2_ficha.py`; `g2_contribuciones` |
-| G3 · Barras pareadas | Adrián, P2 | ¿En qué difiere de un buen pagador? | `vistas/p2_ficha.py`; `g3_pareadas` |
-| G4 · Bandeja con barra de PD | Adrián, P1 | ¿Qué solicitud reviso primero? | `vistas/p1_bandeja.py` |
-| G5 · Mapa de calor | Mariana, P3 | ¿Qué combinación de segmentos supera la tolerancia? | `vistas/p3_cartera.py`; `g5_mapa_calor` |
-| G6 · Barras de pagos | Mariana, P3 | ¿Qué historial de pagos concentra más incumplimiento? | `vistas/p3_cartera.py`; `g6_barras_grupo` |
-| G7 · Curva de cambio de corte | Mariana, P3 | Si cambio el corte, ¿cuánta aprobación pierdo y cuánto incumplimiento evito? | `vistas/p3_cartera.py`; `g7_tradeoff` |
-| G8 · Tendencia/banda | Luis, P4 | ¿La aprobación sigue dentro de su banda esperada? | `vistas/p4_monitor.py`; `g8_linea_banda` |
-| G9 · Distribuciones | Luis, P4 | ¿Cambió la población de solicitudes que llega? | `vistas/p4_monitor.py`; `g9_histogramas` |
-| G10 · Acuerdo modelo/analista | Luis, P4 | ¿Las decisiones de analistas y recomendaciones del modelo se están separando? | `vistas/p4_monitor.py`; `g10_apiladas` |
-| Discriminación, calibración y coeficientes | Luis, P4 | ¿El modelo separa los grupos?, ¿predice tasas cercanas a las observadas? y ¿qué variables pesan más? | `vistas/p4_monitor.py` |
-| Cuatro gráficas de DTI / incumplimiento | KPI P7 | ¿Cómo se distribuye DTI?, ¿cuánto incumplió la cartera?, ¿DTI promedio?, ¿qué ocurre con DTI alto? | `vistas/p7_kpis.py` |
-
-Cada título o comentario de código declara su pregunta; los colores se acompañan de leyendas, unidades y textos donde están implementados. Una gráfica no documentada en esta tabla no se considera automáticamente cubierta.
-
-## 2. Paleta y razones calculadas
-
-Se revisó `.streamlit/config.toml` y `src/graficas.py` siguiendo WCAG 2.2: **4.5:1** texto normal, **3:1** texto grande y elementos informativos no textuales. Ejemplos auditados: negro `#0b0b0b` / blanco `#ffffff` = **19.68:1**, gris de texto `#52514e` / blanco = **7.94:1**, texto claro `#f0efec` / fondo oscuro `#0f1110` = **16.48:1**. Sin embargo, gris tenue `#898781` / blanco = **3.59:1** y blanco / verde principal `#0f8a4f` = **4.40:1**; si se usan como texto normal sobre esas superficies, **no llegan a 4.5:1**. Cálculos, límites y reserva sobre pares renderizados: `investigacion/visual-jerarquia.md`.
-
-**Estado del criterio CI de contraste:** **PENDIENTE.** El workflow actual verifica datos y tests, no paleta; por ello no se promete bloqueo automático de regresiones de color. No se cambió el código visual ni el workflow sin autorización.
-
-## 3. Jerarquía visual justificada
-
-El objetivo manda la prioridad: Adrián decide una solicitud, Mariana define política por segmento y Luis resuelve alertas. En P1 los KPIs y filtros se ven antes de la tabla y el botón de acción; en P3 aparecen filtros y conteo activo antes de mapas y curvas; en P4 el estado y las alertas aparecen antes de las gráficas de diagnóstico. Estas relaciones están respaldadas por `src/config.py`, `src/seguridad.py`, `vistas/` y por la respuesta del profesor sobre la exposición de octubre, no por preferencias arbitrarias.
-
-**Fuente de apoyo:** `investigacion/visual-jerarquia.md` y W3C WCAG 2.2. **Investigación 1 original:** no localizada en `main`; queda pendiente anexarla si el profesor exige esa pieza histórica concreta.
-
-## 4. Estado «nada seleccionado» y uso de `st.stop()`
-
-**P3, `vistas/p3_cartera.py`:** cuando el corte no tiene muestra válida, se muestra explicación y **`st.stop()`** impide continuar al resto del cálculo. **P2, `vistas/p2_ficha.py`:** existen bloqueos de folio inexistente/ajeno y situaciones inválidas, también con `st.stop()`. **P1:** si F2 no tiene niveles seleccionados, ofrece estado vacío y restablecer sin mostrar una tabla válida. Los tres casos no deben confundirse: el `st.stop()` exigido es comprobable específicamente en P3/P2.
-
-## 5. Dos controles y la decisión que habilitan
-
-| Control | Valor / visualización | Decisión y efecto |
+| Persona / gráfico V3 | Pregunta mostrada en la propia gráfica o arriba | Archivo |
 |---|---|---|
-| **F1: Estado de solicitud (P1)** | Pendiente, En espera de documento, Resuelta hoy | Adrián selecciona qué tipo de tarea atiende; la tabla se filtra y se ve el conteo activo |
-| **F2: Nivel de riesgo por PD (P1)** | Alto, Medio, Bajo (selección múltiple) | Adrián prioriza los casos por nivel de riesgo; se actualizan tabla y conteo |
-| C2 adicional (P3) | Corte de PD propuesto por gerencia | Mariana evalúa aprobación que se sacrifica y riesgo que se reduce al mover corte |
+| Analista · indicador de PD | ¿La PD de este caso supera el corte de la política crediticia? | `app_v3.py` |
+| Analista · histograma TEST | ¿Dónde se ubica la PD del caso frente a las solicitudes de TEST? | `app_v3.py` |
+| Analista · endeudamiento | ¿Cómo se compara el endeudamiento del caso con los grupos de TRAIN? | `app_v3.py` |
+| Analista · perfil relativo | ¿Qué indicadores superan la mediana de buenos pagadores? | `app_v3.py` |
+| Analista · percentiles | ¿Qué percentil ocupa cada indicador del caso dentro de TRAIN? | `app_v3.py` |
+| Gerencia · escenarios de corte | ¿Cómo cambian los casos condicionados y rechazados al mover el corte? | `app_v3.py` |
+| Gerencia · default condicional | ¿Qué incumplimiento se observó en la zona condicional de TEST? | `app_v3.py` |
+| Gerencia · cumplimiento individual | ¿Qué tan cerca está cada analista de su meta individual? | `src/manager_overview.py` |
+| Gerencia · evolución | ¿Cómo avanzan las decisiones de los analistas frente a la meta? | `src/manager_overview.py` |
+| Gerencia · incidencias | ¿Qué categorías concentran las incidencias de Soporte? | `src/manager_overview.py` |
+| Gerencia · estados | ¿Cuáles son los estados de los casos de Soporte? | `src/manager_overview.py` |
+| Analistas · evolución mensual | ¿Cómo evolucionan las decisiones del mes frente a la meta? | `src/kpi_views.py` |
+| Analistas · composición | ¿Qué proporción de decisiones fue aceptar, condicionar o rechazar? | `src/kpi_views.py` |
+| Analistas · riesgos atendidos | ¿Cuántos casos se atendieron por nivel de riesgo frente a la meta? | `src/kpi_views.py` |
+| Analistas · procedimientos | ¿Qué tan cerca están los indicadores de procedimiento de sus metas? | `src/kpi_views.py` |
+| Gerencia · indicador elegido | ¿Qué analista está más cerca de la meta del KPI elegido? | `src/kpi_views.py` |
+| Gerencia · acumulado mensual | ¿Cómo evoluciona el número de decisiones por analista durante el mes? | `src/kpi_views.py` |
+| Gerencia · riesgo XGBoost | ¿Qué niveles de riesgo atiende cada analista? | `src/kpi_views.py` |
+| Soporte · ROC | ¿Qué tan bien distinguen los modelos el incumplimiento? | `src/support_views.py` |
+| Soporte · precisión/recall | ¿Qué precisión obtiene cada modelo al aumentar la detección de incumplimientos? | `src/support_views.py` |
+| Soporte · matriz | ¿Cuántos casos clasifica correcta e incorrectamente XGBoost? | `src/support_views.py` |
+| Soporte · PD por clase | ¿Cómo se distribuye la PD entre créditos cumplidos e incumplidos? | `src/support_views.py` |
+| Soporte · importancia | ¿Qué variables tienen mayor importancia interna en XGBoost? | `src/support_views.py` |
+| Soporte · calibración | ¿Coinciden las probabilidades estimadas con el incumplimiento observado? | `src/support_views.py` |
 
-Evidencia: `src/config.py` (filtro con persona y decisión), `src/ui.py` (`corte_activo` imprime filtro + n/total y permite restablecer), `vistas/p1_bandeja.py` y `vistas/p3_cartera.py`.
+Se conserva el cálculo y la geometría de cada gráfica; solo cambia el título por una pregunta. La tabla «Resumen visual de decisión» también tiene una pregunta, aunque no cuenta como gráfica.
 
-## 6. Matriz de acceso por rol, mecanismo y limitación
+## 2. Paleta y contraste calculado
 
-| Rol | Acceso permitido | Acceso restringido |
+WCAG 2.2 AA: **4.5:1** texto normal y **3:1** texto grande/elementos informativos. Ejemplos con la paleta original: KPI `#b8c5bd` sobre `#161b18` **9.77:1**; chip rojo `#f47b87` sobre `#4b2027` **5.23:1**; ámbar `#f5c65b` sobre `#423011` **7.89:1**; verde `#52dc9a` sobre `#103a2a` **7.26:1**. **No se cambiaron los colores**; el menú rápido reutiliza los existentes.
+
+Pipeline: `.github/workflows/check_dashboard.yml`, ejecuta `python scripts/check_contrast_b3.py` y `python -m pytest -q`. Si la combinación auditada no cumple, el CI falla. Ver [investigación 3](../investigacion/B3.md) para método y alcance; no se declara auditoría integral del DOM.
+
+## 3. Jerarquía justificada con investigación 1
+
+El estudio original del equipo *User Persona Riesgo Crediticio v2 (1).pdf*, pp. 4–5 y 15–17, explica que Adrián debe decidir un caso en menos de 5 minutos; Mariana necesita comparar segmentos y políticas. De ahí que P1 muestre KPIs, filtros y conteo antes de la tabla y P2 muestre PD y recomendación antes de comparaciones; la gerencia ve primero métricas y después simulador. [Síntesis y evidencia de la investigación 1](../investigacion/1-user-persona.md). La V3 añadió Sofía y Soporte; esta evolución se documenta.
+
+## 4. Estado «nada seleccionado» y `st.stop()`
+
+En `app_v3.py` (Bandeja, aprox. líneas 399–439), quitar todas las recomendaciones o usar filtros sin coincidencias muestra **«No hay solicitudes para esta combinación»**, ofrece Restablecer y ejecuta `st.stop()`. En Ficha (aprox. líneas 665–680), si el Loan ID no coincide con solicitudes autorizadas, muestra aviso y `st.stop()`. No se procesan ni grafican casos inexistentes.
+
+## 5. Dos controles y decisión con conteo visible
+
+| Control | Selección | Decisión que habilita |
 |---|---|---|
-| **Adrián / Sofía, analistas** | P1 y P2, únicamente sus propias solicitudes; pueden registrar decisiones | No consultan cartera P3, monitor P4 ni DEFAULT de su solicitud |
-| **Mariana, gerencia** | P3, agregados de segmentos con n suficiente | No recibe una fila de préstamo ni P2 |
-| **Luis, operación** | P4, métricas y folios enmascarados | No recibe P1 ni la ficha nominal P2 |
-| **Sin rol** | Solicitud de acceso | No ve información de créditos |
+| **Estado de la solicitud** (P1) | Pendiente, Resuelta, Todas | Adrián/Sofía prioriza los casos por trabajar o verificar |
+| **Recomendación XGBoost** (P1) | Aceptar, Condicionar y Rechazar (selección múltiple) | Adrián/Sofía elige qué nivel de recomendación revisar antes de decidir |
 
-P5, P6 y P7 tienen alcance definido para cada rol. El servidor comprueba `puede_ver` y `exigir_acceso`; las funciones de entrega filtran además columnas/datos. Evidencia: `src/auth.py`, `src/seguridad.py`, `tests/test_seguridad.py`.
+Ambos filtros realmente actualizan `filtrada`. La interfaz muestra **«N resultados · datos de TEST · N páginas · Orden: ...»**, junto con los filtros y el botón Restablecer. Evidencia: `app_v3.py`, líneas aproximadas 362–466.
 
-**Limitación obligatoria:** en modo demostración los perfiles se seleccionan sin verificación de identidad: **no es autenticación real**. `src/auth.py` admite configuración con OIDC y asignación de roles fuera del repositorio, pero no se presenta el modo demo como protección suficiente de datos sensibles. El enlace de Streamlit Cloud es público. No se publican secretos ni datos personales reales.
+## 6. Matriz de acceso por rol y limitación de autenticación
 
-## Estado de los ocho criterios de la rúbrica
+| Perfil | Pantallas / permisos | Restricción |
+|---|---|---|
+| Adrián, analista A-017 | Bandeja, Ficha, Mis indicadores, Mensajes | Solo sus Loan ID; no controla política ni accede a Soporte |
+| Sofía, analista A-022 | Bandeja, Ficha, Mis indicadores, Mensajes | Solo sus Loan ID; no ve casos asignados a Adrián |
+| Mariana, gerencia | Métricas del área, Analistas y KPI, Mensajes, Auditoría de accesos | No registra decisiones de préstamos como analista |
+| Especialista de Soporte | Centro de soporte, Validación del modelo, Mensajes | No aprueba ni rechaza solicitudes |
 
-| Criterio | Evaluación documental |
-|---|---|
-| Pregunta por gráfica | Documentado según código de `main` |
-| Contraste AA y CI que bloquea | **PENDIENTE: no existe verificación de contraste en workflow** |
-| Jerarquía ligada a investigación 1 | Parcial: jerarquía respaldada por código y observaciones; fuente exacta de investigación 1 ausente |
-| Paleta sin depender solo del color | Evidencia de semáforos con texto e íconos; no equivale a auditoría de daltonismo global |
-| Nada seleccionado y `st.stop()` | Evidenciado en P3/P2; P1 tiene estado vacío |
-| Dos controles + decisión + corte visible | F1 y F2 en P1 documentados |
-| Acceso por rol + limitación | Matriz y pruebas presentes; autenticación de demo no verifica identidad |
-| `prompts/B3.md` e investigación 3 | `prompts/B3.md` y `investigacion/visual-jerarquia.md`, con límites históricos explicitados |
+**Mecanismo:** `app_v3.py` crea navegación distinta por perfil, separa los préstamos con `ANALISTA_ID`, y `send_decision` comprueba propiedad del préstamo antes de guardarlo. Se borra el estado de navegación al cambiar de perfil; pruebas `tests/test_analyst_isolation.py`, `tests/test_demo_login.py` y `tests/test_v3.py`.
 
-**La entrega 3 no se declara 100 % aprobada sin evidencia de CI WCAG y la fuente original de investigación 1.** Esta es una comprobación fiel sin modificar un dashboard que ya fue presentado.
+**Limitación explícita:** selección de perfiles **sin verificar identidad**; es una rebanada funcional de demostración, no autenticación institucional ni RBAC seguro para datos reales. La URL es pública y los datos son sintéticos. No hay contraseñas en GitHub.
+
+**Defensa en vivo:** entrar como Adrián, mostrar P1/P2; salir y entrar como Mariana para mostrar pantallas distintas; repetir con Sofía para observar separación de Loan ID; vaciar filtros en P1 para mostrar el estado y `st.stop()`.
