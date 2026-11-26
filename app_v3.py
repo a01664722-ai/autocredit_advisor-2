@@ -338,14 +338,15 @@ if page == 'Bandeja':
     pendientes = total - resueltas
     priorizadas = int(todos['SUGERENCIA'].eq('Rechazar').sum())
 
-    # KPI de riesgo retrospectivo + metas operativas. Misma fuente que
-    # Mis indicadores y ambos paneles de Mariana (sin cambiar el modelo).
+    # Metas de priorización de riesgo y de productividad del mes. Ambas
+    # se obtienen de la misma fuente que analistas y gerencia.
     metas_gerencia = store.targets()
     mensual = monthly_summary(decisiones, analyst_id, scored=M.scores)
-    rechazos_test = fmt_risk("Rechazos con incumplimiento TEST",
-                            mensual["metrics"]["Rechazos con incumplimiento TEST"])
-    n_rechazos = mensual["reject_valid_n"]
-    n_default = mensual["reject_default_n"]
+    prioridad_alta = mensual["metrics"]["Prioridad riesgo alto"]
+    prioridad_texto = fmt_risk("Prioridad riesgo alto", prioridad_alta)
+    meta_prioridad = float(metas_gerencia.get("Prioridad riesgo alto", 0.60))
+    meta_prioridad_texto = fmt_risk("Prioridad riesgo alto", meta_prioridad)
+    semaforo_prioridad = level(prioridad_alta, meta_prioridad)
     casos_alto = mensual["metrics"]["Riesgo alto atendido"]
     pd_media = fmt_risk("PD promedio evaluada", mensual["metrics"]["PD promedio evaluada"])
     meta_alto = float(metas_gerencia.get("Riesgo alto atendido", 15))
@@ -354,11 +355,10 @@ if page == 'Bandeja':
     avance_mes = decisiones_mes / meta_mensual
     semaforo_mes = level(decisiones_mes, meta_mensual)
     semaforo_alto = level(casos_alto, meta_alto)
-    detalle_riesgo = ("No hay casos rechazados sugeridos evaluables este mes"
-                      if not n_rechazos else
-                      f"{n_default:,} de {n_rechazos:,} con DEFAULT = 1 en TEST")
-    if n_rechazos is None:
-        detalle_riesgo = "Sin cruce verificable de Loan ID con DEFAULT en TEST"
+    detalle_riesgo = (f"{casos_alto:,} de {decisiones_mes:,} atendidas con riesgo alto · "
+                      "meta porcentual editable por gerencia"
+                      if decisiones_mes else
+                      "Sin decisiones del mes: proporción no evaluable")
     st.markdown(f"""
     <div class="ac-p1-head">
       <div class="ac-p1-eyebrow">AutoCredit Advisor · Operación crediticia</div>
@@ -367,24 +367,24 @@ if page == 'Bandeja':
       Préstamos originales de TEST, predichos por XGBoost (12 variables). La asignación a analistas es demostrativa.</div>
     </div>
     <div class="ac-p1-kpis">
-      <div class="ac-p1-kpi blue"><div class="name">Rechazos con default (TEST)</div>
-        <div class="number">{rechazos_test}</div>
-        <div class="detail">{detalle_riesgo} · retrospectivo, no posterior al rechazo*</div></div>
+      <div class="ac-p1-kpi {semaforo_prioridad}"><div class="name">Atención prioritaria de riesgo alto</div>
+        <div class="number">{prioridad_texto} / {meta_prioridad_texto}</div>
+        <div class="detail">{detalle_riesgo} · no exige rechazar*</div></div>
       <div class="ac-p1-kpi {semaforo_alto}"><div class="name">Casos de alto riesgo atendidos</div>
         <div class="number">{casos_alto:,} / {int(meta_alto):,}</div>
         <div class="detail">XGBoost sugirió Rechazar · meta mensual gerencia*</div></div>
       <div class="ac-p1-kpi amber"><div class="name">PD promedio evaluada</div>
         <div class="number">{pd_media}</div>
         <div class="detail">Promedio de PD XGBoost de las decisiones del mes · no es default observado</div></div>
-      <div class="ac-p1-kpi {semaforo_mes}"><div class="name">Atendidas / asignadas TEST</div>
-        <div class="number">{decisiones_mes:,} / {total:,}</div>
-        <div class="detail">Meta mensual gerencial: {int(meta_mensual):,} atendidas · {avance_mes:.0%} de avance</div></div>
+      <div class="ac-p1-kpi {semaforo_mes}"><div class="name">Atendidas vs meta</div>
+        <div class="number">{decisiones_mes:,} / {int(meta_mensual):,}</div>
+        <div class="detail">Meta mensual establecida por gerencia · {avance_mes:.0%} de avance</div></div>
     </div>
     """, unsafe_allow_html=True)
 
     st.caption(f'Bandeja: {total:,} solicitudes asignadas* · {pendientes:,} pendientes · '
                f'{resueltas:,} con decisión registrada. Los KPI superiores corresponden '
-               'a las decisiones del mes; el denominador de productividad es la asignación TEST.')
+               'a las decisiones del mes y a las metas configuradas por gerencia.')
     st.markdown(
         f'<div class="ac-p1-inline"><b>{priorizadas:,}</b> casos clasificados para rechazo '
         f'por la política vigente · Aceptar bajo <b>{M.corte_base:.2%}</b> '
