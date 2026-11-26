@@ -1,8 +1,8 @@
-# Entregable 1 · Corrección documental de la retroalimentación
+# Entregable 1 · Evidencia de requisitos y revisión de código
 
 **Repositorio definitivo:** https://github.com/a01664722-ai/autocredit_advisor-2  
 **Dashboard público informado:** https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/  
-**Puntaje de la primera entrega:** 28/100. El profesor confirmó que la URL en ventana privada, la aplicación por perfiles y sus pantallas **sí funcionaban**: la principal penalización fue por documentación faltante.
+**Contexto de revisión:** la retroalimentación reconoció que el enlace público, el acceso por perfiles y las pantallas de demostración funcionaban. Esta ficha reúne las evidencias documentales y técnicas solicitadas para el bloque 1 en el repositorio de entrega.
 
 ## Comprobación por criterio del profesor
 
