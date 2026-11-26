@@ -12,6 +12,8 @@ https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/
 
 **Automatización de B3:** `python scripts/check_contrast_b3.py` (contrastes de paleta V3) y `python -m pytest -q` (pruebas). Se ejecutan en [GitHub Actions](.github/workflows/check_dashboard.yml). Los colores, umbrales, modelos, datos y decisiones permanecen sin cambios.
 
+**Última retroalimentación de gerencia del curso:** se priorizan **tres indicadores de riesgo crediticio y uno de productividad**, en el mismo orden y con la misma fórmula para Adrián, Sofía y Mariana. El primer KPI expresa el **monto de solicitudes de alto riesgo evaluadas (u.m.)**, no pérdidas evitadas. [Consultar metodología, integración entre pantallas y pruebas](docs/kpis-riesgo-integracion.md). El selector de **Decisión rápida** recibe únicamente un contorno verde neón con el color actual, sin modificar su función.
+
 **Seguridad:** acceso por perfiles **de demostración**, no autenticación institucional; la URL pública y el conjunto sintético no deben usarse para evaluar solicitantes reales.
 
 

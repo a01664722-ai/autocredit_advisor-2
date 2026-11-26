@@ -1,4 +1,4 @@
-"""Vistas Streamlit de productividad mensual de la demo: analista y consola gerente."""
+"""Vistas de riesgo crediticio y productividad: misma fuente de KPI para analista y gerente."""
 from __future__ import annotations
 import html
 import numpy as np
@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.monthly_kpis import KPI_SPECS, KPI_MAP, monthly_summary, level, progress, fmt
+from src.monthly_kpis import KPI_SPECS, KPI_MAP, RISK_HEADLINES, RISK_MAP, monthly_summary, level, progress, fmt, fmt_risk
 from src import store
 from src.analyst_palette import analyst_color, GOAL_COLOR
 
@@ -74,6 +74,26 @@ def _metric_card(spec, value, goal, note=""):
     )
 
 
+def _risk_primary_card(spec, value, targets):
+    """Las dos señales de exposición/PD NO tienen cuota ni color de cumplimiento.
+
+    Para alto riesgo atendido y decisiones sí conservamos la meta gerencial de
+    KPI_SPECS; los cuatro indicadores se alimentan de monthly_summary.
+    """
+    key, label, kind, description = spec
+    if key in KPI_MAP:
+        goal = _goal_value(targets, key)
+        return _metric_card(KPI_MAP[key], value, goal)
+    return (
+        '<div class="ac-month-card" style="--ac-color:#56dca0;--ac-bg:rgba(38,49,43,.2)">'
+        f'<div class="label">{html.escape(label)}</div>'
+        f'<div class="reading">{html.escape(fmt_risk(key,value))}</div>'
+        '<div class="goal">Indicador de riesgo · sin meta de volumen</div>'
+        f'<div class="detail">{html.escape(description)}</div>'
+        '</div>'
+    )
+
+
 def format_kpi_chart(fig,height=340):
     """Leyenda bajo los ejes, nunca superpuesta al título ni a los datos."""
     import plotly.graph_objects as go
@@ -112,32 +132,44 @@ def _goal_value(targets,key):
 def render_analyst_month(name,analyst_id,score_df):
     targets=store.targets()
     records=store.decisions_map(analyst_id)
-    stats=monthly_summary(records,analyst_id)
+    stats=monthly_summary(records,analyst_id,scored=score_df)
     count_all=len(records)
     total_assigned=int(score_df["ANALISTA_ID"].eq(analyst_id).sum())
     pending=max(0,total_assigned-count_all)
     _head("Mis indicadores · Analista",
-          f"{name} · {stats['period'].capitalize()} · avances contra las metas mensuales fijadas por gerencia*",
+          f"{name} · {stats['period'].capitalize()} · tres señales de riesgo y una de productividad*",
           "AUTOCREDIT / SEGUIMIENTO MENSUAL")
 
-    info1,info2,info3=st.columns(3,gap="small")
-    info1.metric("Cartera TEST asignada*",f"{total_assigned:,}")
-    info2.metric("Pendientes en la bandeja*",f"{pending:,}")
-    info3.metric("Decisiones registradas este mes",f"{stats['count']:,}")
-    st.caption("* Las metas son definidas por gerencia y se comparten entre perfiles. "
-               "Las solicitudes de TEST se asignan de forma demostrativa. "
-               "Solo cuentan préstamos distintos con última decisión registrada en el mes local.")
+    # El primer KPI es financiero y los tres primeros son de riesgo.
+    st.markdown("### Riesgo crediticio · tres KPI de riesgo y uno de productividad")
+    primary_cols = st.columns(4, gap="small")
+    for col, spec in zip(primary_cols, RISK_HEADLINES):
+        key = spec[0]
+        with col:
+            st.markdown(_risk_primary_card(spec, stats["metrics"][key], targets),
+                        unsafe_allow_html=True)
+    st.caption("Exposición = monto de préstamos con sugerencia Rechazar que tuvieron una decisión "
+               "registrada este mes (u.m.); NO es pérdida evitada ni pérdida esperada. "
+               "PD = probabilidad estimada por XGBoost, NO incumplimiento observado. "
+               "Las cifras provienen de la misma bitácora SQLite y los Loan ID de TEST "
+               "que utiliza la bandeja; los perfiles y asignaciones son demostrativos.")
 
-    for start in (0,3):
-        cols=st.columns(3,gap="small")
-        for col,spec in zip(cols,KPI_SPECS[start:start+3]):
-            key=spec[0];v=stats["metrics"][key];goal=_goal_value(targets,key)
-            with col:
-                st.markdown(_metric_card(spec,v,goal),unsafe_allow_html=True)
-
-    st.caption("Semáforos: rojo <50% de la meta; ámbar 50–99%; verde ≥100%. "
-               "Una tasa sin casos suficientes se presenta como «—». "
-               "El cumplimiento de metas no mide por sí solo la calidad de la decisión.")
+    with st.expander("Ver indicadores complementarios y volumen de la bandeja", expanded=False):
+        info1,info2,info3=st.columns(3,gap="small")
+        info1.metric("Cartera TEST asignada*",f"{total_assigned:,}")
+        info2.metric("Pendientes en la bandeja*",f"{pending:,}")
+        info3.metric("Decisiones registradas este mes",f"{stats['count']:,}")
+        st.caption("Las siguientes metas de procedimiento y volumen se conservan para "
+                   "continuidad con las entregas anteriores; son secundarias frente al riesgo.")
+        for start in (0,3):
+            cols=st.columns(3,gap="small")
+            for col,spec in zip(cols,KPI_SPECS[start:start+3]):
+                key=spec[0];v=stats["metrics"][key];goal=_goal_value(targets,key)
+                with col:
+                    st.markdown(_metric_card(spec,v,goal),unsafe_allow_html=True)
+        st.caption("Semáforos de metas: rojo <50%, ámbar 50–99%, verde ≥100%. "
+                   "Sin casos, las tasas no evaluables se muestran «—». "
+                   "Los indicadores informativos de riesgo no tienen semáforo de cumplimiento.")
 
     left,right=st.columns([1.18,1],gap="large")
     with left:
@@ -229,19 +261,20 @@ def _confirm_targets(changes,manager):
         st.rerun()
 
 
-def render_manager_month(manager):
+def render_manager_month(manager, score_df=None):
     targets=store.targets()
     records=store.decisions()
-    summaries={aid:monthly_summary(records,aid) for _,aid,_ in ANALYSTS}
+    summaries={aid:monthly_summary(records,aid,scored=score_df) for _,aid,_ in ANALYSTS}
     period=next(iter(summaries.values()))["period"]
     _head("Consola de metas e indicadores",
-          f"Control mensual de {period} · Metas comunes y ranking operativo de analistas",
+          f"Control mensual de {period} · monitoreo de riesgo crediticio y metas comunes de analistas",
           "GERENCIA / KPI MENSUALES")
 
     if st.session_state.pop("target_save_notice",False):
         st.success("Metas guardadas. Se enviaron notificaciones a los analistas.")
-    st.caption("Los KPI de la bandeja y de Mis indicadores consultan estas mismas metas*. "
-               "Los valores reflejan decisiones guardadas, no productividad simulada.")
+    st.caption("Las cuatro cifras principales son idénticas a las de Bandeja y Mis indicadores. "
+               "Exposición y PD media son señales informativas de riesgo, sin metas que incentiven aumentarlas. "
+               "Los casos de alto riesgo y las decisiones sí usan las metas mensuales compartidas.")
 
     cols=st.columns(2,gap="medium")
     for column,(person,aid,initials) in zip(cols,ANALYSTS):
@@ -253,51 +286,77 @@ def render_manager_month(manager):
                     f'<div><div class="ac-profile-name">{html.escape(person)}</div>'
                     f'<div class="ac-profile-sub">Analista {aid} · perfil de prueba*</div></div></div>',
                     unsafe_allow_html=True)
-                c1,c2,c3=st.columns(3)
-                c1.metric("Decisiones mes",str(stats["count"]))
-                c2.metric("Avance meta",f'{progress(stats["count"],_goal_value(targets,"Decisiones mensuales")):.0%}')
-                c3.metric("Excepciones",str(stats["overrides"]))
-                st.progress(min(1.0,stats["count"]/_goal_value(targets,"Decisiones mensuales")))
-                st.caption(f'Meta mensual: {fmt("Decisiones mensuales",_goal_value(targets,"Decisiones mensuales"))} decisiones')
+                cols_top=st.columns(2,gap="small")
+                cols_top[0].metric("Exposición alto riesgo · u.m.",
+                                   fmt_risk("Exposición alto riesgo evaluada",
+                                            stats["metrics"]["Exposición alto riesgo evaluada"]))
+                cols_top[1].metric("Casos alto riesgo",
+                                   f'{stats["metrics"]["Riesgo alto atendido"]:,}')
+                cols_bottom=st.columns(2,gap="small")
+                cols_bottom[0].metric("PD promedio revisada",
+                                      fmt_risk("PD promedio evaluada",
+                                               stats["metrics"]["PD promedio evaluada"]))
+                cols_bottom[1].metric("Decisiones del mes",
+                                      f'{stats["count"]:,}')
+                st.caption("Exposición = monto evaluado, no pérdida. "
+                           "PD = probabilidad predicha, no default observado.")
 
     st.markdown("### Comparar desempeño por indicador")
-    selected=st.selectbox("Selecciona el KPI del ranking", [x[0] for x in KPI_SPECS],
-                          format_func=lambda k: KPI_MAP[k][1],key="manager_kpi_selected")
-    goal=_goal_value(targets,selected)
+    keys=[x[0] for x in RISK_HEADLINES]+[
+        x[0] for x in KPI_SPECS if x[0] not in RISK_MAP
+    ]
+    selected=st.selectbox("Selecciona el KPI del ranking",keys,
+                          format_func=lambda k: (RISK_MAP[k][1] if k in RISK_MAP
+                                                 else KPI_MAP[k][1]),
+                          key="manager_kpi_selected")
+    has_goal = selected in KPI_MAP
+    goal = _goal_value(targets,selected) if has_goal else None
     ranks=[]
     for person,aid,_initials in ANALYSTS:
         value=summaries[aid]["metrics"][selected]
-        advancement=progress(value,goal)
+        advancement=progress(value,goal) if has_goal else None
+        shown=fmt(selected,value) if has_goal else fmt_risk(selected,value)
         ranks.append({"Analista":person,"ID":aid,
-                      "Resultado":fmt(selected,value),
-                      "Meta":fmt(selected,goal),
+                      "Resultado":shown,
+                      "Meta":fmt(selected,goal) if has_goal else "Indicador informativo",
                       "Avance":f'{advancement:.0%}' if advancement is not None else "—",
-                      "Estado":"Sin base" if advancement is None else
-                              "Meta lograda" if advancement >= 1 else "En progreso",
-                      "_sort":-1 if advancement is None else advancement})
+                      "Estado":("Sin base" if has_goal and advancement is None else
+                                "Meta lograda" if has_goal and advancement>=1 else
+                                "En progreso" if has_goal else
+                                "Sin dato" if value is None else "Riesgo observado"),
+                      "_sort":-1 if value is None else
+                             (advancement if has_goal and advancement is not None
+                              else float(value) if not has_goal else -1)})
     ranked=pd.DataFrame(ranks).sort_values("_sort",ascending=False)
     st.dataframe(ranked.drop(columns="_sort"),hide_index=True,use_container_width=True)
     fig=go.Figure()
-    mult=100 if KPI_MAP[selected][2]=="rate" else 1
+    is_rate = (selected == "PD promedio evaluada" or
+               (selected in KPI_MAP and KPI_MAP[selected][2]=="rate"))
+    mult=100 if is_rate else 1
     for person,aid,_ in ANALYSTS:
         value=summaries[aid]["metrics"][selected]
         fig.add_trace(go.Bar(
             x=[person.split()[0]],y=[value*mult if value is not None else None],
             name=person.split()[0],marker_color=analyst_color(aid),
-            text=[f"{value*mult:.1f}" if value is not None else "—"],
+            text=[(f"{value*mult:.1f}" if is_rate else f"{value:,.0f}")
+                  if value is not None else "—"],
             textposition="outside"))
-    reference=goal*mult
-    fig.add_hline(y=reference,line_dash="dash",line_color=GOAL_COLOR,
-                  annotation_text="Meta gerencial")
-    fig.update_layout(title="¿Qué analista está más cerca de la meta del KPI elegido?",
-                      yaxis_title="Porcentaje (%)" if KPI_MAP[selected][2]=="rate" else "Solicitudes",
-                      showlegend=True)
+    if has_goal:
+        reference=goal*mult
+        fig.add_hline(y=reference,line_dash="dash",line_color=GOAL_COLOR,
+                      annotation_text="Meta gerencial")
+    units = ("Porcentaje (%)" if is_rate else
+             "Importe evaluado (u.m.)" if selected == "Exposición alto riesgo evaluada"
+             else "Solicitudes")
+    fig.update_layout(
+        title="¿Qué nivel de riesgo o cumplimiento presenta cada analista?",
+        yaxis_title=units, showlegend=True)
     _chart(fig,390)
 
     st.markdown("### Metas que controla gerencia")
-    st.caption("Todas son mensuales y aplican a cada analista. Los tres KPI de riesgo "
-               "cuentan solicitudes evaluadas según la recomendación XGBoost; "
-               "no establecen cuotas para aprobar o rechazar créditos.")
+    st.caption("Las metas editables son operativas y se conservan para ambos analistas. "
+               "La exposición de alto riesgo y la PD promedio son indicadores informativos: "
+               "no tienen metas artificiales, no miden pérdidas realizadas y no premian más riesgo.")
 
     changes={}
     with st.form("monthly_goals_form"):
