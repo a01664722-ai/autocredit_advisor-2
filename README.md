@@ -1,6 +1,6 @@
 https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/
 
-# AutoCredit Advisor · Build y Test
+# AutoCredit Advisor  Build y Test
 
 Dashboard de riesgo de crédito en Streamlit. La base `data/Base_SAS_Equipo3.csv` contiene 80,000 registros y 12 columnas. La información se organiza por perfil: analistas, gerencia y soporte.
 
