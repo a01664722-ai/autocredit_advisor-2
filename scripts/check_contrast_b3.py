@@ -39,10 +39,10 @@ def contrast_ratio(fg: str, bg: str) -> float:
 
 def css_text_colors(path: str) -> list[tuple[str, str]]:
     text = (ROOT / path).read_text(encoding="utf-8")
-    selectors = re.findall(r"(\\.[\\w-]+(?:\\s+\\.[\\w-]+)?)\\s*\\{([^{}]+)\\}", text)
+    selectors = re.findall(r"(\.[\w-]+(?:\s+\.[\w-]+)?)\s*\{([^{}]+)\}", text)
     found = []
     for selector, rules in selectors:
-        match = re.search(r"(?:^|[;\\n])\\s*color\\s*:\\s*(#[0-9a-fA-F]{6})\\b", rules)
+        match = re.search(r"(?:^|[;\n])\s*color\s*:\s*(#[0-9a-fA-F]{6})\b", rules)
         if match:
             found.append((selector, match.group(1)))
     if not found:
@@ -54,8 +54,8 @@ def used_chart_colors(path: str) -> list[str]:
     text = (ROOT / path).read_text(encoding="utf-8")
     # Traza los colores literales de líneas/barras, no los fondos decorativos.
     patterns = (
-        r"(?:marker_color|line_color)\\s*=\\s*['\\\"](#[0-9a-fA-F]{6})",
-        r"line\\s*=\\s*dict\\(color\\s*=\\s*['\\\"](#[0-9a-fA-F]{6})",
+        r"(?:marker_color|line_color)\s*=\s*['\\"](#[0-9a-fA-F]{6})",
+        r"line\s*=\s*dict\(color\s*=\s*['\\"](#[0-9a-fA-F]{6})",
     )
     colors = []
     for pattern in patterns:
