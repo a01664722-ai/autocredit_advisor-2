@@ -24,7 +24,7 @@ https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/45742128624
 | Analistas · composición | ¿Qué proporción de decisiones fue aceptar, condicionar o rechazar? | `src/kpi_views.py` |
 | Analistas · riesgos atendidos | ¿Cuántos casos se atendieron por nivel de riesgo frente a la meta? | `src/kpi_views.py` |
 | Analistas · procedimientos | ¿Qué tan cerca están los indicadores de procedimiento de sus metas? | `src/kpi_views.py` |
-| Gerencia · indicador elegido | ¿Qué analista está más cerca de la meta del KPI elegido? | `src/kpi_views.py` |
+| Gerencia · indicador elegido | ¿Qué nivel de riesgo o cumplimiento presenta cada analista? | `src/kpi_views.py` |
 | Gerencia · acumulado mensual | ¿Cómo evoluciona el número de decisiones por analista durante el mes? | `src/kpi_views.py` |
 | Gerencia · riesgo XGBoost | ¿Qué niveles de riesgo atiende cada analista? | `src/kpi_views.py` |
 | Soporte · ROC | ¿Qué tan bien distinguen los modelos el incumplimiento? | `src/support_views.py` |
