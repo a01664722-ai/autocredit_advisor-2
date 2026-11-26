@@ -42,6 +42,20 @@ h1{font-size:1.65rem!important;line-height:1.2!important} h2{font-size:1.3rem!im
 [data-testid="stDataFrame"] [role="gridcell"]:focus-within{outline:2px solid #52dc9a!important;background:#243f32!important}
 [data-testid="stDataFrame"] [aria-selected="true"]{background:#244636!important}
 [data-testid="stDataFrame"] [role="columnheader"]{font-weight:700!important}
+ /* B3: el menu de decision rapida queda por encima de la tabla; conservamos la paleta existente. */
+ [data-testid="stDataEditor"]{overflow:visible!important}
+ [data-testid="stDataEditor"] [data-baseweb="select"]{z-index:1000!important}
+ div[data-baseweb="popover"]{z-index:100000!important}
+ div[data-baseweb="popover"] [role="listbox"]{
+   max-height:280px!important;overflow-y:auto!important;
+   background:#161b18!important;color:#eff8f1!important;
+   border:1px solid #37443d!important;
+ }
+ div[data-baseweb="popover"] [role="option"]{color:#eff8f1!important}
+ div[data-baseweb="popover"] [role="option"]:hover,
+ div[data-baseweb="popover"] [role="option"][aria-selected="true"]{
+   background:#244636!important;color:#eff8f1!important
+ }
 section[data-testid="stSidebar"]{width:270px!important}
 [data-testid="stVerticalBlock"]{gap:.75rem}
 </style>''',unsafe_allow_html=True)
@@ -831,7 +845,7 @@ elif page=='Ficha de solicitud':
     g1, g2 = st.columns([1.05, .95], gap='large')
 
     with g1:
-        st.subheader('Mapa de decisión del modelo')
+        st.subheader('¿La PD de este caso supera el corte de la política crediticia?')
         fig = go.Figure()
 
         fig.add_trace(go.Indicator(
@@ -864,7 +878,7 @@ elif page=='Ficha de solicitud':
         )
 
     with g2:
-        st.subheader('Distribución de PD en TEST')
+        st.subheader('¿Dónde se ubica la PD del caso frente a las solicitudes de TEST?')
         hist = go.Figure()
         hist.add_trace(go.Histogram(
             x=M.scores['PD_XGB'],
@@ -899,7 +913,7 @@ elif page=='Ficha de solicitud':
     g3, g4 = st.columns([1.08, .92], gap='large')
 
     with g3:
-        st.subheader('Endeudamiento y estructura del caso vs referencias')
+        st.subheader('¿Cómo se compara el endeudamiento del caso con los grupos de TRAIN?')
         campos = [
             'DEBT_TO_INCOME', 'PAYMENT_TO_INCOME', 'REVOLVING_UTILIZATION',
             'LOAN_TO_VALUE', 'DOWN_PAYMENT_PCT'
@@ -938,7 +952,7 @@ elif page=='Ficha de solicitud':
         st.plotly_chart(comp, use_container_width=True)
 
     with g4:
-        st.subheader('Perfil relativo del caso')
+        st.subheader('¿Qué indicadores superan la mediana de buenos pagadores?')
         perfil_campos = ['DEBT_TO_INCOME', 'PAYMENT_TO_INCOME', 'REVOLVING_UTILIZATION', 'LOAN_TO_VALUE', 'DOWN_PAYMENT_PCT', 'MISSED_PAYMENTS_12M']
         perfil_etiquetas = ['DTI', 'PTI', 'Uso revolvente', 'LTV', 'Enganche', 'Pagos omitidos']
 
@@ -985,7 +999,7 @@ elif page=='Ficha de solicitud':
     g5, g6 = st.columns([1, 1], gap='large')
 
     with g5:
-        st.subheader('Ubicación de la solicitud dentro de TRAIN')
+        st.subheader('¿Qué percentil ocupa cada indicador del caso dentro de TRAIN?')
         percentil_vars = [
             ('DEBT_TO_INCOME', 'DTI'),
             ('PAYMENT_TO_INCOME', 'PTI'),
@@ -1021,7 +1035,7 @@ elif page=='Ficha de solicitud':
         st.caption('Percentiles altos en DTI, PTI, LTV o uso revolvente suelen reflejar mayor presión financiera.')
 
     with g6:
-        st.subheader('Resumen visual de decisión')
+        st.subheader('¿Qué cifras sustentan la recomendación de esta solicitud?')
         resumen = pd.DataFrame([
             ['PD XGBoost', f'{r.PD_XGB:.1%}', f'Corte rechazo {r.CORTE:.1%}'],
             ['PD Logit', f'{r.PD_LOGIT:.1%}', 'Modelo complementario'],
@@ -1160,13 +1174,13 @@ elif page=='Métricas del área':
             f.add_trace(go.Scatter(x=thresholds*100,y=conditional,mode='lines',line_color='#e4be65',name='Condicionar'))
             f.add_trace(go.Scatter(x=thresholds*100,y=rejected,mode='lines',line_color='#e56a72',name='Rechazar'))
             f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
-            f.update_layout(title='Escenarios: condicionar y rechazar (TEST)',xaxis_title='Corte superior de PD (%)',yaxis_title='Porcentaje de solicitudes (%)',height=310,
+            f.update_layout(title='¿Cómo cambian los casos condicionados y rechazados al mover el corte?',xaxis_title='Corte superior de PD (%)',yaxis_title='Porcentaje de solicitudes (%)',height=310,
                 margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
             st.plotly_chart(f,use_container_width=True)
         with fc2:
             f=go.Figure(go.Scatter(x=thresholds*100,y=default_conditioned,mode='lines',line_color='#f08565',name='Default observado condicional'))
             f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
-            f.update_layout(title='Incumplimiento observado en zona condicional (TEST)',xaxis_title='Corte superior de PD (%)',yaxis_title='Default histórico (%)',height=310,
+            f.update_layout(title='¿Qué incumplimiento se observó en la zona condicional de TEST?',xaxis_title='Corte superior de PD (%)',yaxis_title='Default histórico (%)',height=310,
                 margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
             st.plotly_chart(f,use_container_width=True)
         st.caption('Curvas calculadas con la variable DEFAULT de TEST, exclusivamente en agregado. Si el corte cambia después de ver TEST, debe evaluarse de nuevo en una muestra futura independiente antes de producción.')

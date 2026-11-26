@@ -298,7 +298,7 @@ def render_support_validation(model):
         fig.add_trace(go.Scatter(x=[0,1],y=[0,1],mode="lines",
                     name="Azar",line=dict(color="#858F89",dash="dash")))
         fig.update_layout(xaxis_title="Tasa de falsos positivos",
-                          yaxis_title="Sensibilidad",title="Curva ROC")
+                          yaxis_title="Sensibilidad",title="¿Qué tan bien distinguen los modelos el incumplimiento?")
         _plot(fig,425,legend=True)
     with r:
         fig=go.Figure()
@@ -306,7 +306,7 @@ def render_support_validation(model):
             pre,rec,_=precision_recall_curve(model.scores.DEFAULT,model.scores[col])
             fig.add_trace(go.Scatter(x=rec,y=pre,mode="lines",name=name,
                        line=dict(color=MODEL_COLOR if name=="XGBoost" else SECONDARY_COLOR,width=2.8)))
-        fig.update_layout(title="Curva Precision-Recall",
+        fig.update_layout(title="¿Qué precisión obtiene cada modelo al aumentar la detección de incumplimientos?",
                           xaxis_title="Recall",yaxis_title="Precision")
         _plot(fig,425,legend=True)
 
@@ -317,7 +317,7 @@ def render_support_validation(model):
         fig=go.Figure(go.Heatmap(z=cm,x=["Predicho 0","Predicho 1"],
                                  y=["Real 0","Real 1"],colorscale="Greens",
                                  text=cm,texttemplate="%{text:,}",showscale=False))
-        fig.update_layout(title="Matriz de confusión · XGBoost",yaxis=dict(autorange="reversed"))
+        fig.update_layout(title="¿Cuántos casos clasifica correcta e incorrectamente XGBoost?",yaxis=dict(autorange="reversed"))
         _plot(fig,405)
     with r:
         fig=go.Figure()
@@ -325,7 +325,7 @@ def render_support_validation(model):
             probs=model.scores.loc[model.scores.DEFAULT==cls,"PD_XGB"]
             fig.add_trace(go.Histogram(x=probs,nbinsx=35,histnorm="probability",
                     name=f"DEFAULT = {cls}",marker_color=col,opacity=.70))
-        fig.update_layout(title="Distribución de PD en TEST",barmode="overlay",
+        fig.update_layout(title="¿Cómo se distribuye la PD entre créditos cumplidos e incumplidos?",barmode="overlay",
                          xaxis_title="Probabilidad XGBoost",
                          yaxis_title="Proporción dentro de cada clase")
         _plot(fig,425,legend=True)
@@ -336,7 +336,7 @@ def render_support_validation(model):
         importances=pd.Series(model.xgb.feature_importances_,index=COLS).sort_values().tail(10)
         fig=go.Figure(go.Bar(x=importances.values,y=[LABELS[c] for c in importances.index],
                    orientation="h",marker_color=MODEL_COLOR))
-        fig.update_layout(title="Importancia interna · XGBoost",
+        fig.update_layout(title="¿Qué variables tienen mayor importancia interna en XGBoost?",
                           xaxis_title="Importancia del modelo",
                           yaxis_title="")
         _plot(fig,470,wide_left=True)
@@ -351,7 +351,7 @@ def render_support_validation(model):
                 model.scores.DEFAULT,model.scores[col],n_bins=10,strategy="quantile")
             fig.add_trace(go.Scatter(x=estimated,y=observed,mode="lines+markers",
                          name=name,line=dict(color=MODEL_COLOR if name=="XGBoost" else SECONDARY_COLOR)))
-        fig.update_layout(title="Calibración de probabilidades",
+        fig.update_layout(title="¿Coinciden las probabilidades estimadas con el incumplimiento observado?",
                           xaxis_title="PD media pronosticada",
                           yaxis_title="Frecuencia de incumplimiento")
         _plot(fig,470,legend=True)

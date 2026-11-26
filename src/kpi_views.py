@@ -141,7 +141,7 @@ def render_analyst_month(name,analyst_id,score_df):
 
     left,right=st.columns([1.18,1],gap="large")
     with left:
-        st.markdown("#### Evolución de decisiones este mes")
+        st.markdown("#### ¿Cómo evolucionan las decisiones del mes frente a la meta?")
         day=np.arange(1,stats["month_days"]+1)
         real=[v if i<stats["day"] else None for i,v in enumerate(stats["cumulative"])]
         goal=_goal_value(targets,"Decisiones mensuales")
@@ -154,7 +154,7 @@ def render_analyst_month(name,analyst_id,score_df):
         fig.update_yaxes(title="Casos distintos")
         _chart(fig,315)
     with right:
-        st.markdown("#### Decisiones registradas por tipo")
+        st.markdown("#### ¿Qué proporción de decisiones fue aceptar, condicionar o rechazar?")
         composition=stats["decisions"]
         if sum(composition.values()):
             fig=go.Figure(go.Pie(
@@ -168,7 +168,7 @@ def render_analyst_month(name,analyst_id,score_df):
 
     left,right=st.columns([1.15,.85],gap="large")
     with left:
-        st.markdown("#### Casos atendidos por nivel de riesgo")
+        st.markdown("#### ¿Cuántos casos se atendieron por nivel de riesgo frente a la meta?")
         cats=["Riesgo alto atendido","Riesgo medio atendido","Riesgo bajo atendido"]
         short=["Alto","Medio","Bajo"]
         fig=go.Figure()
@@ -179,7 +179,7 @@ def render_analyst_month(name,analyst_id,score_df):
         fig.update_layout(barmode="group",yaxis_title="Solicitudes del mes")
         _chart(fig,325)
     with right:
-        st.markdown("#### Indicadores de procedimiento")
+        st.markdown("#### ¿Qué tan cerca están los indicadores de procedimiento de sus metas?")
         rate_keys=["Coincidencia con sugerencia","Con justificación"]
         labels=["Coincidencia XGBoost","Excepciones justificadas"]
         fig=go.Figure()
@@ -289,7 +289,8 @@ def render_manager_month(manager):
     reference=goal*mult
     fig.add_hline(y=reference,line_dash="dash",line_color=GOAL_COLOR,
                   annotation_text="Meta gerencial")
-    fig.update_layout(yaxis_title="Porcentaje (%)" if KPI_MAP[selected][2]=="rate" else "Solicitudes",
+    fig.update_layout(title="¿Qué analista está más cerca de la meta del KPI elegido?",
+                      yaxis_title="Porcentaje (%)" if KPI_MAP[selected][2]=="rate" else "Solicitudes",
                       showlegend=True)
     _chart(fig,390)
 
@@ -337,7 +338,7 @@ def render_manager_month(manager):
                 y=[v if i<d["day"] else None for i,v in enumerate(d["cumulative"])],
                 mode="lines+markers",name=person,marker=dict(size=5),
                 line=dict(color=analyst_color(aid),width=3)))
-        fig.update_layout(title="Decisiones acumuladas del mes",xaxis_title="Día",
+        fig.update_layout(title="¿Cómo evoluciona el número de decisiones por analista durante el mes?",xaxis_title="Día",
                           yaxis_title="Solicitudes distintas")
         _chart(fig,320)
     with team_cols[1]:
@@ -351,7 +352,7 @@ def render_manager_month(manager):
             subset=[x for x in report if x[0]==person]
             fig.add_trace(go.Bar(x=["Alto","Medio","Bajo"],y=[x[2] for x in subset],
                                  name=person,marker_color=analyst_color(aid)))
-        fig.update_layout(title="Casos atendidos por nivel XGBoost",barmode="group",
+        fig.update_layout(title="¿Qué niveles de riesgo atiende cada analista?",barmode="group",
                           yaxis_title="Solicitudes del mes")
         _chart(fig,320)
 

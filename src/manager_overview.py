@@ -216,7 +216,7 @@ def render_manager_overview(scores=None):
                     textposition="outside"))
             fig.add_hline(y=goal*mult,line_dash="dash",line_color=GOAL_COLOR,
                           annotation_text="Meta de gerencia")
-            fig.update_layout(title="Resultado vs. meta individual",
+            fig.update_layout(title="¿Qué tan cerca está cada analista de su meta individual?",
                        showlegend=True,
                        yaxis_title="Porcentaje (%)" if metric_type=="rate" else "Casos")
             _fig(fig,410)
@@ -233,7 +233,7 @@ def render_manager_overview(scores=None):
                       y=[goal/stats["month_days"],goal],
                       mode="lines",name="Meta del mes",
                       line=dict(color=GOAL_COLOR,dash="dash")))
-            fig.update_layout(title="Decisiones acumuladas del mes",
+            fig.update_layout(title="¿Cómo avanzan las decisiones de los analistas frente a la meta?",
                                xaxis_title="Día del mes",yaxis_title="Decisiones")
             _fig(fig,410)
 
@@ -277,7 +277,7 @@ def render_manager_overview(scores=None):
                 marker_color="#54d9a1",text=values_show,
                 textposition="outside",cliponaxis=False))
             fig.update_layout(
-                title="Incidencias por categoría",
+                title="¿Qué categorías concentran las incidencias de Soporte?",
                 xaxis_title="Número de reportes",showlegend=False,
                 xaxis=dict(range=[0,max(values_show)*1.25+0.4],dtick=1),
                 yaxis=dict(type="category",automargin=True),
@@ -289,7 +289,7 @@ def render_manager_overview(scores=None):
         fig=go.Figure(go.Pie(
             labels=list(STATES),values=[dti["open"],dti["review"],dti["solved"]],
             hole=.67,marker=dict(colors=["#ee959d","#e9c068","#59d8a0"])))
-        fig.update_layout(title="Estado de casos de Soporte",showlegend=True)
+        fig.update_layout(title="¿Cuáles son los estados de los casos de Soporte?",showlegend=True)
         _fig(fig,390) if dti["total"] else st.info(
             "Sin incidencias de Soporte durante este mes: la resolución no es evaluable.")
     with st.expander("Ver detalle de incidencias reportadas"):
