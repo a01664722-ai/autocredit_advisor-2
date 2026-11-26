@@ -91,5 +91,3 @@ Los archivos citados permiten comprobar **qué funciona y dónde quedó**. No se
 
 El equipo determinó **las tres personas usuarias y sus decisiones**, los datos que necesita cada pantalla, los permisos de acceso, el significado de los datos faltantes, los criterios de riesgo, el objetivo de resolver una solicitud en menos de cinco minutos, las acciones disponibles para el analista y la necesidad de justificar las excepciones. También **auditamos las propuestas técnicas y decidimos cuáles integrar**; la IA actuó como apoyo para organizar y revisar el código, no como responsable de validar el producto ni de tomar decisiones crediticias.
 
-**Continuidad pendiente:** el repositorio histórico de B1 `a01659312-iis/autocredit_advisor---9nov` y el definitivo `a01664722-ai/autocredit_advisor-2` tienen historias Git independientes. Actualizar el contrato no fusiona esas historias.
-
