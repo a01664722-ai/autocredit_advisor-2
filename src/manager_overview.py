@@ -130,6 +130,20 @@ def build_team_metrics(records, targets, reference=None, scores=None):
                 period=next(iter(individuals.values()))["period"])
 
 
+def _team_metric(stats, key):
+    """Contrato compatible con resúmenes previos al KPI de prioridad."""
+    if key == "Prioridad riesgo alto":
+        count = stats["count"]
+        return stats["metrics"]["Riesgo alto atendido"] / count if count else None
+    return stats["metrics"][key]
+
+
+def _team_fmt(key, value):
+    if key == "Prioridad riesgo alto":
+        return f"{value:.1%}" if value is not None else "—"
+    return fmt(key,value) if key in KPI_MAP else fmt_risk(key,value)
+
+
 def render_manager_overview(scores=None):
     st.markdown(STYLES,unsafe_allow_html=True)
     st.markdown('<div class="ac-mgr-top"></div>',unsafe_allow_html=True)
@@ -161,7 +175,7 @@ def render_manager_overview(scores=None):
     high_progress=progress(team["risk_high"],high_goal)
     risk_cards=[
         ("Atención prioritaria de riesgo alto",
-         f'{fmt("Prioridad riesgo alto",team["risk_priority"])} / {fmt("Prioridad riesgo alto",priority_goal)}',
+         f'{_team_fmt("Prioridad riesgo alto",team["risk_priority"])} / {_team_fmt("Prioridad riesgo alto",priority_goal)}',
          f'{team["risk_high"]:,} de {team["decisions"]:,} atendidas con sugerencia Rechazar · meta de gerencia',
          "neutral" if priority_progress is None else
          "green" if priority_progress>=1 else "amber" if priority_progress>=.5 else "red",
@@ -240,19 +254,20 @@ def render_manager_overview(scores=None):
         chosen_ids=(
            ["A-017"] if profile.startswith("Adrián") else
            ["A-022"] if profile.startswith("Sofía") else ["A-017","A-022"])
-        has_goal=selected in KPI_MAP
-        metric_type=("rate" if selected == "PD promedio evaluada" else
-                     KPI_MAP[selected][2] if has_goal else "amount")
-        goal=float(targets.get(selected,KPI_MAP[selected][3])) if has_goal else None
+        has_goal=selected in KPI_MAP or selected == "Prioridad riesgo alto"
+        metric_type=("rate" if selected in ("PD promedio evaluada","Prioridad riesgo alto") else
+                     KPI_MAP[selected][2] if selected in KPI_MAP else "amount")
+        goal=(float(targets.get(selected,.60 if selected=="Prioridad riesgo alto"
+                                else KPI_MAP[selected][3])) if has_goal else None)
         ranking=[]
         for aid in chosen_ids:
             person=ANALYST_IDS[aid]
             stats=team["individuals"][aid]
-            value=stats["metrics"][selected]
+            value=_team_metric(stats, selected)
             pct=progress(value,goal) if has_goal else None
             ranking.append({"Analista":person,"Identificador":aid,
-                 "Registrado":fmt(selected,value) if has_goal else fmt_risk(selected,value),
-                 "Meta":fmt(selected,goal) if has_goal else "Informativo",
+                 "Registrado":_team_fmt(selected,value),
+                 "Meta":_team_fmt(selected,goal) if has_goal else "Informativo",
                  "Cumplimiento":f"{pct:.1%}" if pct is not None else "—",
                  "Estado":("No evaluable" if has_goal and pct is None else
                            "Meta lograda" if has_goal and pct>=1 else
@@ -269,7 +284,7 @@ def render_manager_overview(scores=None):
             fig=go.Figure()
             mult=100 if metric_type=="rate" else 1
             for aid in chosen_ids:
-                value=team["individuals"][aid]["metrics"][selected]
+                value=_team_metric(team["individuals"][aid],selected)
                 label=ANALYST_IDS[aid].split()[0]
                 fig.add_trace(go.Bar(
                     x=[label],
@@ -314,14 +329,15 @@ def render_manager_overview(scores=None):
             all_specs=[(k,label,kind,None,desc) for k,label,kind,desc in RISK_HEADLINES]
             all_specs.extend(x for x in KPI_SPECS if x[0] not in RISK_MAP)
             for key,short,kind,default,description in all_specs:
-                value=stats["metrics"][key]
-                has_target=key in KPI_MAP
-                target=float(targets.get(key,KPI_MAP[key][3])) if has_target else None
+                value=_team_metric(stats,key)
+                has_target=key in KPI_MAP or key=="Prioridad riesgo alto"
+                target=(float(targets.get(key,.60 if key=="Prioridad riesgo alto"
+                                          else KPI_MAP[key][3])) if has_target else None)
                 ratio=progress(value,target) if has_target else None
                 table.append({"Analista":ANALYST_IDS[aid],
                   "KPI":short,
-                  "Registrado":fmt(key,value) if has_target else fmt_risk(key,value),
-                  "Meta":fmt(key,target) if has_target else "Informativo",
+                  "Registrado":_team_fmt(key,value),
+                  "Meta":_team_fmt(key,target) if has_target else "Informativo",
                   "Avance":f"{ratio:.0%}" if ratio is not None else "—",
                   "Semáforo":("Sin base" if has_target and ratio is None else
                               "Verde" if has_target and ratio>=1 else

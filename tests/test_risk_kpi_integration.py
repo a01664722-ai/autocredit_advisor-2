@@ -210,3 +210,37 @@ def test_risk_priority_goals_validate_and_reject_invalid_values(tmp_path,monkeyp
     with pytest.raises(ValueError):
         store.set_targets_batch({"Prioridad riesgo alto":0},"Mariana")
     assert store.targets()["Prioridad riesgo alto"]==pytest.approx(.60)
+
+
+def test_streamlit_hot_reload_legacy_summary_does_not_raise_keyerror(monkeypatch):
+    """Reproduce la captura: app nueva con resumen de una versión previa.
+
+    El resumen no contiene 'Prioridad riesgo alto', pero sí los conteos que
+    existían antes del cambio. Las cuatro pantallas deben poder dibujarlo.
+    """
+    from src import kpi_views, manager_overview
+    from src.monthly_kpis import KPI_MAP
+    old_stats={"count":10, "metrics":{
+        "Riesgo alto atendido":8,
+        "Decisiones mensuales":10,
+        "PD promedio evaluada":.211,
+    }}
+    assert "Prioridad riesgo alto" not in old_stats["metrics"]
+    assert kpi_views._monthly_metric(old_stats,"Prioridad riesgo alto")==pytest.approx(.8)
+    assert manager_overview._team_metric(old_stats,"Prioridad riesgo alto")==pytest.approx(.8)
+    assert manager_overview._team_fmt("Prioridad riesgo alto",.8)=="80.0%"
+    assert kpi_views._fmt_priority(.8)=="80.0%"
+    assert kpi_views._monthly_metric({"count":0,"metrics":{"Riesgo alto atendido":0}},
+                                     "Prioridad riesgo alto") is None
+    assert manager_overview._team_fmt("Prioridad riesgo alto",None)=="—"
+
+    # Simula también un KPI_MAP anterior sin metadatos de esta meta.
+    monkeypatch.delitem(KPI_MAP,"Prioridad riesgo alto")
+    spec=("Prioridad riesgo alto","Atención prioritaria de riesgo alto",
+          "risk_rate","Priorizar casos de riesgo alto")
+    card=kpi_views._risk_primary_card(spec,.8,{"Prioridad riesgo alto":.6})
+    assert "80.0%" in card and "60.0%" in card
+
+    app=(Path(__file__).resolve().parents[1]/"app_v3.py").read_text(encoding="utf-8")
+    assert 'mensual["metrics"]["Prioridad riesgo alto"]' not in app
+    assert "prioridad_alta = casos_alto / decisiones_mes if decisiones_mes else None" in app

@@ -342,16 +342,19 @@ if page == 'Bandeja':
     # se obtienen de la misma fuente que analistas y gerencia.
     metas_gerencia = store.targets()
     mensual = monthly_summary(decisiones, analyst_id, scored=M.scores)
-    prioridad_alta = mensual["metrics"]["Prioridad riesgo alto"]
-    prioridad_texto = fmt_risk("Prioridad riesgo alto", prioridad_alta)
-    meta_prioridad = float(metas_gerencia.get("Prioridad riesgo alto", 0.60))
-    meta_prioridad_texto = fmt_risk("Prioridad riesgo alto", meta_prioridad)
-    semaforo_prioridad = level(prioridad_alta, meta_prioridad)
+    # Derivar el KPI 1 de dos conteos existentes, no de una clave nueva.
+    # Evita KeyError durante recargas de Streamlit con módulos en memoria
+    # de distintas revisiones; mismo cálculo que usan analistas y gerencia.
+    decisiones_mes = mensual["count"]
     casos_alto = mensual["metrics"]["Riesgo alto atendido"]
+    prioridad_alta = casos_alto / decisiones_mes if decisiones_mes else None
+    prioridad_texto = f"{prioridad_alta:.1%}" if prioridad_alta is not None else "—"
+    meta_prioridad = float(metas_gerencia.get("Prioridad riesgo alto", 0.60))
+    meta_prioridad_texto = f"{meta_prioridad:.1%}"
+    semaforo_prioridad = level(prioridad_alta, meta_prioridad)
     pd_media = fmt_risk("PD promedio evaluada", mensual["metrics"]["PD promedio evaluada"])
     meta_alto = float(metas_gerencia.get("Riesgo alto atendido", 15))
     meta_mensual = float(metas_gerencia.get("Decisiones mensuales", 50))
-    decisiones_mes = mensual["count"]
     avance_mes = decisiones_mes / meta_mensual
     semaforo_mes = level(decisiones_mes, meta_mensual)
     semaforo_alto = level(casos_alto, meta_alto)
