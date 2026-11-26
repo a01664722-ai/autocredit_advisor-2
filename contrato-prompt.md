@@ -71,7 +71,7 @@ Se transcribe **solo el fragmento literal** aportado al equipo. El texto recibid
 
 ## 4. Qué devolvió la IA (respuesta de producto y evidencia recuperada)
 
-**Sí hubo respuestas de la IA y se han identificado ejemplos concretos en conversaciones previas del equipo.** El resultado inicial fue una aplicación de Streamlit para los perfiles Adrián, Mariana y Luis, con pantallas organizadas en `vistas/`, lógica en `src/`, pruebas en `tests/` y una versión pública en Streamlit. Esa estructura se comprueba en el repositorio histórico de B1: https://github.com/a01659312-iis/autocredit_advisor---9nov.
+** El resultado inicial fue una aplicación de Streamlit para los perfiles Adrián, Mariana y Luis, con pantallas organizadas en `vistas/`, lógica en `src/`, pruebas en `tests/` y una versión pública en Streamlit. Esa estructura se comprueba en el repositorio histórico de B1: https://github.com/a01659312-iis/autocredit_advisor---9nov.
 
 **Respuesta posterior recuperada: evolución de los indicadores por perfil (3 de noviembre, hora de CDMX; registrada el 4 de noviembre UTC).** En esa conversación, el asistente entregó:
 
