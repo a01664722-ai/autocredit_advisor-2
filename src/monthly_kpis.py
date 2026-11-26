@@ -80,8 +80,7 @@ def monthly_summary(records, analyst_id=None, reference=None, scored=None):
         # posición ni por la sugerencia vigente, que puede cambiar con política.
         amounts = {
             str(loan): (str(aid), float(amount))
-            for loan, aid, amount in scored[["LOAN_ID", "ANALISTA_ID", "LOAN_AMOUNT"]]
-                .itertuples(index=False, name=None)
+            for loan, aid, amount in scored[["LOAN_ID", "ANALISTA_ID", "LOAN_AMOUNT"]].itertuples(index=False, name=None)
         }
     if not high_rows:
         risk_amount = 0.0
