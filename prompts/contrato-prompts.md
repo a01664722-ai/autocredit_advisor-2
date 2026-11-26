@@ -29,67 +29,69 @@
 
 **Cifras:** REAL = columna del CSV; CALCULADO = resultado derivado o PD; SIMULADO = folio, fecha y condiciones no presentes en la base; POLÍTICA = umbral acordado. Cada pantalla debe distinguirlas. Dato protegido no aparece por la sola existencia de una columna. DTI/LTV/PD se muestran con unidad %, no como texto libre; montos con unidad no especificada, sin suponer MXN.
 
-## 3. Prompt literal disponible
+## 3. Prompt de apoyo al código y auditoría de vistas (versión consolidada)
 
-Se transcribe **solo el fragmento literal** aportado al equipo. El texto recibido termina cortado; no se completa artificialmente:
+**Objetivo de la solicitud:** pedir apoyo técnico para **revisar, organizar y auditar el código de GitHub que el equipo ya estaba trabajando**, especialmente la creación y funcionamiento de cada vista de Streamlit. **No se solicitó delegar a la IA el diseño del negocio ni presentar la app como una creación autónoma de la IA.**
 
-> Rol y objetivo
+> **Rol y objetivo**
 >
-> Actúa como especialista en ciencia de datos, diseño de tableros (UX/UI) y desarrollo en Python. Necesito tu ayuda para diseñar y construir un tablero (dashboard) de riesgo crediticio en Streamlit, estructurado como proyecto de Visual Studio Code, para la materia de Analítica de Datos y Herramientas de Inteligencia Artificial.
+> Actúa como especialista en Python, Streamlit, ciencia de datos y revisión de código. Necesitamos que nos ayudes a **revisar y organizar el código existente** de nuestro repositorio de GitHub de AutoCredit Advisor. Verifica que las pantallas estén correctamente separadas, funcionen y correspondan al diseño y a las decisiones de las personas usuarias. No queremos que inventes otro producto ni que reconstruyas desde cero el dashboard.
 >
-> Contexto
+> **Contexto**
 >
-> - Base de datos: [Base_SAS_Equipo3.csv] — datos sintéticos de crédito automotriz (80,000 registros, 12 variables, incluida la variable objetivo DEFAULT).
-> - Prototipo previo: [User Persona Riesgo Crediticio v2.pdf] — contiene las personas usuarias, el mapa de pantallas y el diseño inicial del tablero.
-> - Personas usuarias:
-> - Adrián, analista de crédito: aprueba, condiciona o rechaza solicitudes individuales en menos de 5 minutos.
-> - Mariana, gerente de riesgo: ajusta la política de crédito por segmento con base en el incumplimiento.
-> - Luis, operación del modelo: vigila métricas operativas y escala alertas cuando algo sale de su banda.
+> - Repositorio del equipo: `a01664722-ai/autocredit_advisor-2`.
+> - Base de trabajo del entregable: `Base_SAS_Equipo3.csv`, con 80,000 registros sintéticos y 12 columnas, incluida `DEFAULT`.
+> - Prototipo de referencia: *User Persona Riesgo Crediticio v2.pdf*.
+> - Perfiles: Adrián (analista, revisa y decide solicitudes), Mariana (gerencia, revisa cartera y política) y Luis (operación, supervisa resultados y alertas).
+> - Tecnologías: Python, Streamlit, Pandas y Plotly; código versionado en GitHub.
 >
-> Requerimientos funcionales
+> **Qué necesitamos que revises y nos ayudes a ordenar**
 >
-> 1. Una pantalla por decisión de cada persona, con acceso por rol (principio de menor privilegio) y una matriz completa persona × dato sensible.
-> 2. Modelo de probabilidad de incumplimiento (PD) entrenado con la base, interpretable y con métricas de desempeño (AUC, KS, calibración).
-> 3. Cada filtro y control debe estar vinculado explícitamente a la decisión de una persona.
-> 4. Notación de origen de cada cifra: dato real, dato propio () y dato simulado (*), con su aclaración al pie de cada pantalla.
-> 5. Semáforo verde / amarillo / rojo, íconos de tendencia (▲/▼) y comparación de cada solicitud contra la media de la cartera.
-> 6. Flujo operativo que primero valide la información y después registre la decisión; notificación al analista cuando la gerencia cambie el corte de un segmento.
-> 7. Estados de error y recuperación dentro del flujo de análisis (datos faltantes, filtros sin resultados, muestra insuficiente, sesión expirada, datos desactualizados).
+> 1. **Estructura del repositorio:** comprobar que `app.py` organice la navegación, `vistas/` contenga las pantallas, `src/` concentre funciones compartidas y `tests/` permita probarlas. Evitar lógica repetida.
+> 2. **Pantallas P0–P7:** verificar para cada vista quién la utiliza, qué información muestra, cómo llega el usuario, qué filtros o botones funcionan y qué decisión puede tomar. Identificar vistas incompletas, controles sin efecto y errores de navegación.
+> 3. **Roles y datos sensibles:** revisar las restricciones por perfil y la matriz persona × dato, de manera que el analista solo acceda a sus solicitudes y cada rol vea únicamente lo autorizado.
+> 4. **Flujo de análisis:** comprobar que las solicitudes puedan abrirse, que los datos se validen antes de registrar una decisión, que existan estados vacíos y rutas de recuperación ante errores y que las excepciones requieran justificación.
+> 5. **Indicadores y visualizaciones:** comprobar que cada KPI y gráfica responda a una pregunta concreta; que las cifras sean correctas y se identifique su origen como REAL, CALCULADO, SIMULADO o POLÍTICA.
+> 6. **Interfaz:** revisar jerarquía visual, contraste, etiquetas, colores acompañados de texto y que los filtros tengan resultados visibles. No alterar pantallas que ya cumplen sin justificarlo.
+> 7. **Pruebas y calidad:** identificar qué funciones necesitan pruebas; revisar el funcionamiento por rol, los errores dentro del proceso y la consistencia con el dataset; indicar qué está verificado y qué falta comprobar.
 >
-> Retroalimentación por atender
+> **Cómo queremos la respuesta**
 >
-> [Pega aquí la retroalimentación recibida, organizada por bloque o criterio.]
->
-> Criterios de diseño
->
-> - Jerarquía visual clara: métricas y filtros clave en la parte superior, mínimo desplazamiento vertical.
-> - Uso moderado de mayúsculas; protagonismo para los nombres de secciones y variables.
-> - Accesibilidad: el color siempre acompañado de texto o ícono; modo claro y oscuro.
-> - Una sola escala por gráfica; nada de gráficas de doble ej
+> Devuélvenos una **propuesta de organización por carpetas**, una **tabla por pantalla** (vista, persona, funcionalidad, decisión y estado de revisión), una **lista de observaciones técnicas con archivo relacionado**, y **cambios puntuales de código o pruebas que podamos revisar antes de integrar**. Explica por qué sugieres cada cambio. **No sustituyas nuestras decisiones de diseño, negocio, permisos ni política crediticia.**
 
-**Nota de autenticidad:** el fragmento se recibió sin la parte final y con el marcador «Pega aquí...». No se afirma que esa sección haya sido completada ni que se conserve el prompt histórico íntegro.
+**Trazabilidad:** este es el **prompt consolidado conforme a la aclaración actual del equipo** y al enfoque de revisión del repositorio. **No se presenta como transcripción literal del mensaje histórico original.** En el fragmento inicial que se había conservado aparecía la frase «diseñar y construir un tablero»; el equipo aclara que, en la práctica, pidió apoyo sobre el código y las vistas del producto en desarrollo. El registro original permanece consultable en el historial del archivo; el prompt literal íntegro aún debe recuperarse si el profesor lo exige.
 
-## 4. Qué devolvió la IA (respuesta de producto y evidencia recuperada)
+## 4. Qué devolvió la IA
 
-**Sí hubo respuestas de la IA y se han identificado ejemplos concretos en conversaciones previas del equipo.** El resultado inicial fue una aplicación de Streamlit para los perfiles Adrián, Mariana y Luis, con pantallas organizadas en `vistas/`, lógica en `src/`, pruebas en `tests/` y una versión pública en Streamlit. Esa estructura se comprueba en el repositorio histórico de B1: https://github.com/a01659312-iis/autocredit_advisor---9nov.
+La IA **nos ayudó a estructurar y revisar el desarrollo del dashboard existente**. Su aportación se centró en organizar el código y señalar qué revisar en cada pantalla; **no sustituyó el trabajo del equipo ni decidió por nosotros cómo debía operar el negocio**.
 
-**Respuesta posterior recuperada: evolución de los indicadores por perfil (3 de noviembre, hora de CDMX; registrada el 4 de noviembre UTC).** En esa conversación, el asistente entregó:
+- **Organización del código:** propuso separar la entrada y navegación en `app.py`, las pantallas por perfil en `vistas/`, la lógica compartida en `src/` y las verificaciones en `tests/`. Esto facilita revisar cada parte sin mezclar la interfaz con los cálculos.
+- **Revisión de las vistas:** ayudó a establecer qué debía comprobarse en P0 (acceso), P1 (bandeja), P2 (ficha), P3 (cartera), P4 (monitor), P5 (errores y recuperación), P6 (gobierno de datos) y P7 (indicadores). La revisión debía relacionar **persona, información, botón o filtro y decisión**.
+- **Auditoría funcional:** aportó criterios para identificar controles sin efecto, información que un rol no debe ver, datos faltantes, falta de justificación al contradecir una recomendación y pantallas sin una salida clara.
+- **Revisión de calidad:** orientó la separación de pruebas y comprobaciones de acceso, integridad de datos y flujo antes de aceptar cambios en GitHub.
+- **Mejoras posteriores por iteración:** también hubo respuestas relativas a la pantalla P7 y los KPI por perfil; esos entregables se documentan como **iteraciones posteriores**, no como prueba de que la IA creó por sí sola la aplicación inicial. Su evidencia se describe en `prompts/B1.md` (P-003).
 
-1. **Primera iteración de indicadores:** archivo `AutoCredit_Advisor_Semana1_KPIs.zip`, incorporación de la pantalla **P7 · Mis indicadores**, tres KPI iniciales y reporte de **12 pruebas aprobadas**; referencia al documento `ENTREGA_SEMANA1_KPI.md`.
-2. **Iteración ampliada por perfil:** archivo `AutoCredit_Advisor_KPIs_Por_Perfil.zip`, propuesta de KPI para **Adrián/Sofía (solicitudes, pendientes y revisión), Mariana (cartera, incumplimiento y DTI) y Luis (completitud y vigilancia de datos)**; reporte de **17 pruebas aprobadas**. Entre los resultados comunicados figuraban **80,000 registros**, **13.48 % de incumplimiento histórico**, **29.61 % de DTI promedio**, **100 % de completitud en variables críticas** y **cero valores fuera de límites**. La respuesta también distinguió las métricas de evaluación de modelos como pendientes de integrar con resultados verificables.
+**Resumen en dos líneas:** la IA aportó una propuesta para **organizar el código de GitHub por vistas y módulos** y una guía para **auditar pantallas, funciones, permisos y pruebas**. El equipo revisó esas propuestas y decidió qué correcciones correspondían al producto.
 
-**Qué entregó, en dos líneas:** una aplicación Streamlit modular y desplegable para decidir por rol; posteriormente, pantallas de indicadores por perfil con cifras provenientes de la base y pruebas automatizadas.
+**Evidencia verificable:** `app.py`, `vistas/`, `src/`, `tests/`, `src/seguridad.py` y `vistas/p6_gobierno.py`; las carpetas y los controles existen en el repositorio. **La lista anterior describe el apoyo y el resultado observable; no es una transcripción palabra por palabra de la primera respuesta de la IA.**
 
-**Alcance de autenticidad:** lo anterior es un **resumen fiel de respuestas posteriores efectivamente localizadas**, no una transcripción literal íntegra de la respuesta inmediatamente posterior al prompt inicial del 2 de noviembre. El texto completo de esa primera respuesta **todavía no se ha recuperado**; no se inventa ni se adjudica la iteración P7 a una fecha anterior. Véase `prompts/B1.md`, entrada P-003.
+## 5. Qué cambiamos de lo que devolvió la IA
 
-## 5. Qué cambió el equipo frente al resultado
+**No integramos las sugerencias automáticamente.** Contrastamos la organización y las observaciones propuestas con el prototipo, los comentarios del profesor y el comportamiento del código. En particular:
 
-La retroalimentación del 21 de octubre exigía (i) error **dentro** del flujo de análisis, no solo en login, y (ii) matriz persona × dato sensible aplicada, no solo dibujada. En el repositorio definitivo existen `vistas/p2_ficha.py`, `vistas/p5_estados.py`, `src/seguridad.py`, `vistas/p6_gobierno.py` y `tests/test_seguridad.py` para comprobar estos controles. También se incorporaron rótulos REAL/CALCULADO/SIMULADO/POLÍTICA, mensajes de error y restricciones por perfil. Los cambios concretos se documentan en `docs/entregable-1.md`; no se inventan fechas de autoría de cada cambio.
+1. **Revisamos pantalla por pantalla** que las vistas correspondieran al rol y a la decisión definida por el equipo; mantuvimos la separación entre navegación, pantallas, cálculos y pruebas.
+2. **Corregimos el flujo de errores:** el profesor señaló que no bastaba con mostrar errores en el inicio de sesión. La revisión incorporó situaciones de información faltante, datos inválidos y recuperación **dentro de la ficha y del proceso de análisis**. Evidencia: `vistas/p2_ficha.py` y `vistas/p5_estados.py`.
+3. **Aplicamos los permisos, no solo los dibujamos:** la matriz persona × dato y los controles por rol se reflejan en `src/seguridad.py`, `vistas/p6_gobierno.py` y `tests/test_seguridad.py`.
+4. **Ajustamos la lectura de las cifras:** orden de columnas, unidades y notas de procedencia (REAL, CALCULADO, SIMULADO y POLÍTICA); documentación en `src/ui.py`, `vistas/p1_bandeja.py` y `contrato-datos.md`.
+5. **Conservamos las decisiones del equipo:** ningún cambio de la IA se consideró aprobado sin revisión; se mantuvieron la intervención humana, el objetivo de negocio y los controles relacionados con la información disponible.
 
-## 6. Qué decidimos nosotros y no el modelo
+Los archivos citados permiten comprobar **qué funciona y dónde quedó**. No se atribuye a una respuesta histórica específica una línea de código si no se cuenta con la comparación de versiones correspondiente. Más detalle en `docs/entregable-1.md`.
 
-El equipo definió a Adrián, Mariana y Luis y sus decisiones; el umbral operativo y la meta de 5 minutos; qué columnas se ven por rol; el significado de un dato ausente; qué cifras se rotulan SIMULADAS; la necesidad de registrar excepciones; y la decisión de no usar la salida predictiva como aprobación automática.
+## 6. Qué decidimos nosotros y no la IA
 
-**Riesgo pendiente:** el repositorio original `a01659312-iis/autocredit_advisor---9nov` y `a01664722-ai/autocredit_advisor-2` tienen historias Git independientes. Este documento no las fusiona ni afirma que los commits del primero pertenezcan a `main` del segundo.
+El equipo determinó **las tres personas usuarias y sus decisiones**, los datos que necesita cada pantalla, los permisos de acceso, el significado de los datos faltantes, los criterios de riesgo, el objetivo de resolver una solicitud en menos de cinco minutos, las acciones disponibles para el analista y la necesidad de justificar las excepciones. También **auditamos las propuestas técnicas y decidimos cuáles integrar**; la IA actuó como apoyo para organizar y revisar el código, no como responsable de validar el producto ni de tomar decisiones crediticias.
 
-> **Nota de ruta:** esta versión completa se publica también en `prompts/contrato-prompts.md` para cubrir la ruta explícita de la rúbrica; el contenido canónico se mantiene en `contrato-prompt.md`.
+**Continuidad pendiente:** el repositorio histórico de B1 `a01659312-iis/autocredit_advisor---9nov` y el definitivo `a01664722-ai/autocredit_advisor-2` tienen historias Git independientes. Actualizar el contrato no fusiona esas historias.
+
+
+> **Nota de ruta:** esta versión se publica también en `prompts/contrato-prompts.md`, la ruta alternativa solicitada en la rúbrica; el contenido principal se mantiene en `contrato-prompt.md`.
