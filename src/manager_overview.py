@@ -26,10 +26,10 @@ STYLES="""
 .ac-mgr-title{font-size:1.9rem;letter-spacing:-.04em;line-height:1.2;
  color:#eff8f1;font-weight:830;margin:5px 0 8px}
 .ac-mgr-sub{font-size:.88rem;color:#aac1b3;line-height:1.5;margin-bottom:21px}
-.ac-mgr-kpi{box-sizing:border-box;min-height:160px;border-radius:16px;padding:18px 18px 14px;
+.ac-mgr-kpi{box-sizing:border-box;min-height:182px;height:auto;border-radius:16px;padding:18px 18px 14px;
  border:1px solid rgba(123,169,143,.27);
  background:linear-gradient(125deg,var(--panel),rgba(16,23,20,.95) 82%);
- box-shadow:0 12px 24px rgba(0,0,0,.10);position:relative;margin-bottom:8px;overflow:hidden}
+ box-shadow:0 12px 24px rgba(0,0,0,.10);position:relative;margin-bottom:8px;overflow-wrap:anywhere}
 .ac-mgr-kpi:before{content:"";position:absolute;top:0;left:13px;right:13px;height:2px;
  background:linear-gradient(90deg,var(--tone),transparent)}
 .ac-mgr-label{font-size:.82rem;color:#d7e6dc;font-weight:700;min-height:20px}
@@ -71,16 +71,17 @@ def format_executive_chart(fig,height=380,horizontal=False):
     if show_legend is None:
         show_legend=(len(fig.data)>1 or is_pie)
     fig.update_layout(
-        height=max(height,390) if show_legend else max(height,345),
+        height=max(height,445) if show_legend else max(height,345),
         margin=dict(l=195 if horizontal else 35,r=35,t=64,
-                    b=118 if show_legend else 65),
+                    b=145 if show_legend else 65),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#d8e7db",size=12),
         title_font=dict(size=16,color="#ecf7f0"),
         showlegend=show_legend,
-        legend=dict(orientation="h",yanchor="top",y=-0.35,
-                    xanchor="center",x=0.5,font=dict(size=11),
+        legend=dict(orientation="h",yanchor="top",y=-0.34,
+                    xanchor="left",x=0,font=dict(size=11),
+                    entrywidthmode="fraction",entrywidth=0.49,
                     bgcolor="rgba(0,0,0,0)"),
         xaxis=dict(gridcolor="rgba(151,172,155,.10)",zeroline=False,
                    automargin=True,title_standoff=12),
@@ -111,7 +112,16 @@ def build_team_metrics(records, targets, reference=None, scores=None):
     avg_pd=(sum(count*pd for count,pd in pd_rows if pd is not None)/n
             if n and all(count==0 or pd is not None for count,pd in pd_rows) else None)
     risk_high=sum(x["metrics"]["Riesgo alto atendido"] for x in individuals.values())
-    return dict(individuals=individuals,decisions=n,decision_goal=target,
+    default_parts=[(x["reject_default_n"],x["reject_valid_n"]) for x in individuals.values()]
+    default_valid=all(num is not None and den is not None for num,den in default_parts)
+    default_n=sum(num for num,_ in default_parts) if default_valid else None
+    default_den=sum(den for _,den in default_parts) if default_valid else None
+    rejection_rate=(default_n/default_den if default_den else None)
+    assigned_parts=[x["assigned"] for x in individuals.values()]
+    assigned=sum(assigned_parts) if all(v is not None for v in assigned_parts) else None
+    return dict(individuals=individuals,decisions=n,assigned=assigned,
+                decision_goal=target, risk_rejection_rate=rejection_rate,
+                risk_rejection_n=default_n,risk_rejection_total=default_den,
                 completion=progress(n,target),exceptions=exc,justified=justified,
                 agreement=agreement, risk_exposure=exposure,
                 risk_high=risk_high, risk_pd=avg_pd,
@@ -141,15 +151,17 @@ def render_manager_overview(scores=None):
         'indicadores operativos consolidados de Adrián, Sofía y Soporte.</div>',
         unsafe_allow_html=True)
 
-    # Tres indicadores de RIESGO en primer lugar. Productividad cuarto.
-    # No se establece objetivo para importe ni PD, porque más riesgo
-    # no representa un mejor desempeño. Mantener soporte como bloque aparte.
+    # La primera tasa contrasta sugerencias históricas de rechazo con DEFAULT
+    # conocido de TEST. No afirma mora posterior al rechazo. Productividad cuarta.
+    # Conservar Soporte y los controles de metas sin alterar.
     high_goal=float(targets.get("Riesgo alto atendido",15))*len(ANALYST_IDS)
     high_progress=progress(team["risk_high"],high_goal)
     risk_cards=[
-        ("Exposición alto riesgo · u.m.",
-         fmt_risk("Exposición alto riesgo evaluada",team["risk_exposure"]),
-         "Monto con sugerencia de rechazo y decisión registrada · NO pérdidas",
+        ("Rechazos con default (TEST)",
+         fmt_risk("Rechazos con incumplimiento TEST",team["risk_rejection_rate"]),
+         (f'{team["risk_rejection_n"]:,} de {team["risk_rejection_total"]:,} sugerencias de rechazo'
+          if team["risk_rejection_total"] is not None else "Sin datos verificables de TEST")
+         + " · retrospectivo, no posterior al rechazo",
          "neutral",None),
         ("Casos alto riesgo evaluados",
          f'{team["risk_high"]:,} / {int(high_goal):,}',
@@ -160,9 +172,9 @@ def render_manager_overview(scores=None):
          fmt_risk("PD promedio evaluada",team["risk_pd"]),
          "Probabilidad estimada por XGBoost · no default observado",
          "neutral",None),
-        ("Decisiones registradas",
-         f'{team["decisions"]:,} / {team["decision_goal"]:,.0f}',
-         "Productividad del mes · meta conjunta de ambos analistas",
+        ("Atendidas / asignadas TEST",
+         f'{team["decisions"]:,} / {team["assigned"]:,}' if team["assigned"] is not None else "—",
+         f'Atendidas este mes · meta gerencial: {team["decision_goal"]:,.0f} casos',
          "green" if reached>=1 else "amber" if reached>=.5 else "red",reached),
     ]
     top=st.columns(4,gap="small")
@@ -170,10 +182,11 @@ def render_manager_overview(scores=None):
         with col:
             st.markdown(_kcard(label,val,detail,tone,completion),
                         unsafe_allow_html=True)
-    st.caption("Los tres primeros KPI son de riesgo crediticio, el cuarto es productividad. "
-               "La exposición se suma por monto del crédito de TEST con sugerencia Rechazar; "
-               "NO es pérdida evitada ni pérdida esperada. La PD no es una tasa de incumplimiento realizada. "
-               "El conteo se refiere a decisiones del mes de SQLite, no a toda la cartera pendiente.")
+    st.caption("Primer KPI: de las solicitudes revisadas este mes para las que XGBoost sugirió "
+               "Rechazar, porcentaje con DEFAULT = 1 en TEST (validación retrospectiva). "
+               "No significa que incumplieron después de rechazarse. La PD no es default observado. "
+               "Productividad = atendidas del mes / solicitudes asignadas del TEST; "
+               "la meta gerencial editable se refiere a decisiones mensuales.")
 
     st.markdown('<div class="ac-mgr-section">Operación y soporte · indicadores complementarios</div>',
                 unsafe_allow_html=True)
@@ -225,7 +238,7 @@ def render_manager_overview(scores=None):
            ["A-017"] if profile.startswith("Adrián") else
            ["A-022"] if profile.startswith("Sofía") else ["A-017","A-022"])
         has_goal=selected in KPI_MAP
-        metric_type=("rate" if selected == "PD promedio evaluada" else
+        metric_type=("rate" if selected in ("PD promedio evaluada", "Rechazos con incumplimiento TEST") else
                      KPI_MAP[selected][2] if has_goal else "amount")
         goal=float(targets.get(selected,KPI_MAP[selected][3])) if has_goal else None
         ranking=[]
@@ -264,7 +277,8 @@ def render_manager_overview(scores=None):
             if has_goal:
                 fig.add_hline(y=goal*mult,line_dash="dash",line_color=GOAL_COLOR,
                               annotation_text="Meta de gerencia")
-            fig.update_layout(title="¿Qué tan cerca está cada analista de su meta individual?",
+            fig.update_layout(title=("¿Qué tan cerca está cada analista de su meta individual?"
+                                     if has_goal else "¿Qué valor tiene el indicador elegido por analista?"),
                        showlegend=True,
                        yaxis_title=("Porcentaje (%)" if metric_type=="rate" else
                                     "Importe (u.m.)" if metric_type=="amount" else "Casos"))
@@ -278,8 +292,12 @@ def render_manager_overview(scores=None):
                 fig.add_trace(go.Scatter(x=days,y=curve,mode="lines+markers",
                    name=ANALYST_IDS[aid].split()[0],
                    line=dict(color=analyst_color(aid),width=3),marker=dict(size=4)))
-            fig.add_trace(go.Scatter(x=[1,stats["month_days"]],
-                      y=[goal/stats["month_days"],goal],
+            # La curva es SIEMPRE de productividad, aunque el KPI elegido
+            # para el ranking sea informativo y no tenga meta (goal=None).
+            goal_decisions=float(targets.get("Decisiones mensuales",50))
+            month_days=next(iter(team["individuals"].values()))["month_days"]
+            fig.add_trace(go.Scatter(x=[1,month_days],
+                      y=[goal_decisions/month_days,goal_decisions],
                       mode="lines",name="Meta del mes",
                       line=dict(color=GOAL_COLOR,dash="dash")))
             fig.update_layout(title="¿Cómo avanzan las decisiones de los analistas frente a la meta?",
@@ -308,10 +326,10 @@ def render_manager_overview(scores=None):
                               "Rojo" if has_target else
                               "Sin dato" if value is None else "Informativo")})
         st.dataframe(pd.DataFrame(table),hide_index=True,use_container_width=True,height=310)
-        st.caption("Exposición y PD son indicadores de riesgo informativos sin metas de aumento. "
-                   "Los conteos se basan en la sugerencia de XGBoost al decidir, "
-                   "no obligan a rechazar solicitudes. No se utiliza DEFAULT real "
-                   "para evaluar al personal ni se afirma que una pérdida fue evitada.")
+        st.caption("La tasa de rechazos con DEFAULT = 1 usa exclusivamente resultados de TEST "
+                   "para revisar retrospectivamente las sugerencias del modelo; no mide "
+                   "incumplimientos posteriores al rechazo ni califica al personal. "
+                   "Las metas de trabajo y sus controles siguen en la consola de Mariana.")
 
     st.markdown('<div class="ac-mgr-section">Supervisión de incidencias · Soporte</div>',
                 unsafe_allow_html=True)
