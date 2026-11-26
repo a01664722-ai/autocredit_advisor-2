@@ -63,12 +63,10 @@ def _metric_card(spec, value, goal, note="", assigned=None):
     reached=0 if advance is None else min(advance,1.0)*100
     color=COLOR[status]
     bg=BG[status]
-    shown=(f"{int(value):,} / {assigned:,}"
-           if key=="Decisiones mensuales" and assigned is not None else fmt(key,value))
-    caption=("Meta gerencial mensual de atendidas: " if assigned is not None
-             and key=="Decisiones mensuales" else "Meta gerencial*: ")
-    shown_label=("Atendidas / asignadas TEST" if assigned is not None
-                 and key=="Decisiones mensuales" else title)
+    shown=(f"{int(value):,} / {int(goal):,}"
+           if key=="Decisiones mensuales" else fmt(key,value))
+    caption="Meta mensual de gerencia: " if key=="Decisiones mensuales" else "Meta gerencial*: "
+    shown_label="Atendidas vs meta" if key=="Decisiones mensuales" else title
     return (
         f'<div class="ac-month-card" style="--ac-color:{color};--ac-bg:{bg}">'
         f'<div class="label">{html.escape(shown_label)}</div>'
@@ -81,10 +79,9 @@ def _metric_card(spec, value, goal, note="", assigned=None):
 
 
 def _risk_primary_card(spec, value, targets, assigned=None):
-    """Las dos señales de exposición/PD NO tienen cuota ni color de cumplimiento.
-
-    Para alto riesgo atendido y decisiones sí conservamos la meta gerencial de
-    KPI_SPECS; los cuatro indicadores se alimentan de monthly_summary.
+    """La atención prioritaria, los casos de riesgo alto y la productividad
+    usan metas editables; la PD permanece descriptiva y sin meta.
+    Las cuatro tarjetas comparten monthly_summary.
     """
     key, label, kind, description = spec
     if key in KPI_MAP:
@@ -147,8 +144,8 @@ def render_analyst_month(name,analyst_id,score_df):
           f"{name} · {stats['period'].capitalize()} · tres señales de riesgo y una de productividad*",
           "AUTOCREDIT / SEGUIMIENTO MENSUAL")
 
-    # El primer KPI contrasta retrospectivamente recomendaciones de rechazo
-    # con DEFAULT en TEST; no se usa para calificar personas.
+    # KPI 1: porcentaje de atención mensual a casos de riesgo alto vs meta.
+    # KPI 4: decisiones del mes vs meta (nunca asignaciones de TEST).
     st.markdown("### Riesgo crediticio · tres KPI de riesgo y uno de productividad")
     primary_cols = st.columns(4, gap="small")
     for col, spec in zip(primary_cols, RISK_HEADLINES):
@@ -157,11 +154,12 @@ def render_analyst_month(name,analyst_id,score_df):
             st.markdown(_risk_primary_card(spec, stats["metrics"][key], targets,
                                             assigned=stats["assigned"]),
                         unsafe_allow_html=True)
-    st.caption("Rechazos con default (TEST) = casos con DEFAULT = 1 / casos con sugerencia "
-               "Rechazar entre las decisiones del mes; es retrospectivo, no incumplimiento "
-               "posterior a un rechazo. La PD es predicha, no realizada. Productividad = "
-               "atendidas del mes / asignadas TEST; la meta editable de Mariana se refiere "
-               "a las atenciones mensuales, no al total TEST.")
+    st.caption("Atención prioritaria = solicitudes atendidas este mes con sugerencia "
+               "de riesgo alto (Rechazar) / todas las solicitudes atendidas este mes. "
+               "Mariana establece la meta porcentual para supervisar la priorización; "
+               "no es tasa de incumplimiento ni obliga a rechazar. "
+               "Atendidas vs meta = decisiones del mes / meta mensual editable por gerencia. "
+               "Sin decisiones, el porcentaje de prioridad es no evaluable.")
 
     with st.expander("Ver indicadores complementarios y volumen de la bandeja", expanded=False):
         info1,info2,info3=st.columns(3,gap="small")
@@ -178,7 +176,7 @@ def render_analyst_month(name,analyst_id,score_df):
                     st.markdown(_metric_card(spec,v,goal),unsafe_allow_html=True)
         st.caption("Semáforos de metas: rojo <50%, ámbar 50–99%, verde ≥100%. "
                    "Sin casos, las tasas no evaluables se muestran «—». "
-                   "Los indicadores informativos de riesgo no tienen semáforo de cumplimiento.")
+                   "La PD promedio es informativa y no tiene semáforo de cumplimiento.")
 
     left,right=st.columns([1.18,1],gap="large")
     with left:
@@ -281,10 +279,10 @@ def render_manager_month(manager, score_df=None):
 
     if st.session_state.pop("target_save_notice",False):
         st.success("Metas guardadas. Se enviaron notificaciones a los analistas.")
-    st.caption("Los cuatro KPI se calculan desde la misma fuente de Bandeja y Mis indicadores. "
-               "La tasa de rechazo con DEFAULT de TEST es retrospectiva y no califica analistas. "
-               "La PD es estimada. Las metas compartidas controlan casos de alto riesgo "
-               "y atenciones mensuales; la productividad muestra atendidas / asignadas TEST.")
+    st.caption("Los KPI de ambos analistas provienen de la misma bitácora mensual y metas "
+               "configurables por Mariana. Atención prioritaria = sugerencias de alto riesgo "
+               "atendidas / todas las atendidas del mes; el porcentaje no califica la decisión humana. "
+               "Atendidas vs meta usa únicamente las decisiones mensuales y la meta gerencial.")
 
     cols=st.columns(2,gap="medium")
     for column,(person,aid,initials) in zip(cols,ANALYSTS):
@@ -297,21 +295,21 @@ def render_manager_month(manager, score_df=None):
                     f'<div class="ac-profile-sub">Analista {aid} · perfil de prueba*</div></div></div>',
                     unsafe_allow_html=True)
                 cols_top=st.columns(2,gap="small")
-                cols_top[0].metric("Rechazos con default (TEST)",
-                                   fmt_risk("Rechazos con incumplimiento TEST",
-                                            stats["metrics"]["Rechazos con incumplimiento TEST"]),
-                                   help="DEFAULT = 1 / sugerencias Rechazar atendidas este mes. Validación retrospectiva TEST.")
+                cols_top[0].metric("Atención prioritaria · vs meta",
+                                   f'{fmt("Prioridad riesgo alto", stats["metrics"]["Prioridad riesgo alto"])} / '
+                                   f'{fmt("Prioridad riesgo alto", _goal_value(targets,"Prioridad riesgo alto"))}',
+                                   help="De las decisiones de este mes, proporción con sugerencia de riesgo alto. La meta la define gerencia; no mide incumplimiento.")
                 cols_top[1].metric("Casos alto riesgo",
                                    f'{stats["metrics"]["Riesgo alto atendido"]:,}')
                 cols_bottom=st.columns(2,gap="small")
                 cols_bottom[0].metric("PD promedio revisada",
                                       fmt_risk("PD promedio evaluada",
                                                stats["metrics"]["PD promedio evaluada"]))
-                cols_bottom[1].metric("Atendidas / asignadas TEST",
-                                      f'{stats["count"]:,} / {stats["assigned"]:,}' if stats["assigned"] is not None else "—",
-                                      help="Atendidas este mes; la meta de casos es editable por Mariana.")
-                st.caption("DEFAULT de TEST: retrospectivo, no posterior al rechazo. "
-                           "PD estimada por el modelo; sin calificar al analista.")
+                cols_bottom[1].metric("Atendidas vs meta",
+                                      f'{stats["count"]:,} / {int(_goal_value(targets,"Decisiones mensuales")):,}',
+                                      help="Decisiones de este mes frente a la meta mensual editable por Mariana.")
+                st.caption("La meta de atención prioritaria supervisa la mezcla de riesgo "
+                           "revisada, no incentiva rechazos. PD estimada por XGBoost.")
 
     st.markdown("### Comparar desempeño por indicador")
     keys=[x[0] for x in RISK_HEADLINES]+[
@@ -366,9 +364,9 @@ def render_manager_month(manager, score_df=None):
     _chart(fig,390)
 
     st.markdown("### Metas que controla gerencia")
-    st.caption("Las metas editables son operativas y afectan a ambos analistas. "
-               "La proporción de rechazos sugeridos con DEFAULT = 1 en TEST y la PD "
-               "son informativas, sin meta que premie más riesgo.")
+    st.caption("Mariana configura el porcentaje de atención prioritaria de riesgo alto "
+               "y el número de solicitudes que deben atenderse en el mes, además de las "
+               "metas existentes. La PD promedio sigue siendo informativa, sin meta.")
 
     changes={}
     with st.form("monthly_goals_form"):
