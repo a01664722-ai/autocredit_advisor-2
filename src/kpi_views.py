@@ -67,9 +67,11 @@ def _metric_card(spec, value, goal, note="", assigned=None):
            if key=="Decisiones mensuales" and assigned is not None else fmt(key,value))
     caption=("Meta gerencial mensual de atendidas: " if assigned is not None
              and key=="Decisiones mensuales" else "Meta gerencial*: ")
+    shown_label=("Atendidas / asignadas TEST" if assigned is not None
+                 and key=="Decisiones mensuales" else title)
     return (
         f'<div class="ac-month-card" style="--ac-color:{color};--ac-bg:{bg}">'
-        f'<div class="label">{html.escape(title)}</div>'
+        f'<div class="label">{html.escape(shown_label)}</div>'
         f'<div class="reading">{html.escape(shown)}</div>'
         f'<div class="goal">{caption}{html.escape(fmt(key,goal))}</div>'
         f'<div class="track"><div class="fill" style="width:{reached:.2f}%"></div></div>'
