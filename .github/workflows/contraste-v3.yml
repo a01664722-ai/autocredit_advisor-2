@@ -1,0 +1,33 @@
+name: B3 - contraste WCAG del dashboard XGBoost V3
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wcag_v3:
+    name: Revisar paleta, preguntas y estados del dashboard publicado V3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Traer el codigo auditado de la rama V3
+        uses: actions/checkout@v4
+        with:
+          ref: v3-integracion-xgboost-12v
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar pytest para verificar la rubrica
+        run: python -m pip install pytest
+      - name: Contraste WCAG 2.2 AA (texto 4.5:1, marcas 3:1)
+        run: python scripts/check_contrast_b3.py
+      - name: Verificar preguntas, acceso, filtros y estados vacios
+        run: python -m pytest -q tests/test_contrast_b3.py tests/test_b3_rubric.py
