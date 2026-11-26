@@ -14,7 +14,7 @@ import streamlit as st
 from src import store
 from src.kpi_views import ANALYSTS
 from src.analyst_palette import analyst_color, GOAL_COLOR
-from src.monthly_kpis import KPI_SPECS, KPI_MAP, local_now, monthly_summary, progress, fmt, level
+from src.monthly_kpis import KPI_SPECS, KPI_MAP, RISK_HEADLINES, RISK_MAP, local_now, monthly_summary, progress, fmt, fmt_risk, level
 from src.ops_monitor import (
     CATEGORIES, incident_month_summary, incidents, monthly_session_stats, STATES,
 )
@@ -96,18 +96,25 @@ def _fig(fig,height=380,horizontal=False):
                     config={"displayModeBar":False,"responsive":True})
 
 
-def build_team_metrics(records, targets, reference=None):
+def build_team_metrics(records, targets, reference=None, scores=None):
     """Pure aggregation for tests; shared targets but per-analyst numerators."""
     reference=reference or local_now()
-    individuals={aid:monthly_summary(records,aid,reference) for aid in ANALYST_IDS}
+    individuals={aid:monthly_summary(records,aid,reference,scored=scores) for aid in ANALYST_IDS}
     n=sum(x["count"] for x in individuals.values())
     target=float(targets.get("Decisiones mensuales",50))*len(ANALYST_IDS)
     exc=sum(x["overrides"] for x in individuals.values())
     justified=sum(x["justified"] for x in individuals.values())
     agreement=(sum(x["matches"] for x in individuals.values())/n) if n else None
+    expo_vals=[x["metrics"]["Exposición alto riesgo evaluada"] for x in individuals.values()]
+    exposure=sum(expo_vals) if all(v is not None for v in expo_vals) else None
+    pd_rows=[(x["count"],x["metrics"]["PD promedio evaluada"]) for x in individuals.values()]
+    avg_pd=(sum(count*pd for count,pd in pd_rows if pd is not None)/n
+            if n and all(count==0 or pd is not None for count,pd in pd_rows) else None)
+    risk_high=sum(x["metrics"]["Riesgo alto atendido"] for x in individuals.values())
     return dict(individuals=individuals,decisions=n,decision_goal=target,
                 completion=progress(n,target),exceptions=exc,justified=justified,
-                agreement=agreement,
+                agreement=agreement, risk_exposure=exposure,
+                risk_high=risk_high, risk_pd=avg_pd,
                 justification_rate=justified/exc if exc else None,
                 period=next(iter(individuals.values()))["period"])
 
@@ -116,7 +123,7 @@ def render_manager_overview(scores=None):
     st.markdown(STYLES,unsafe_allow_html=True)
     st.markdown('<div class="ac-mgr-top"></div>',unsafe_allow_html=True)
     targets=store.targets()
-    team=build_team_metrics(store.decisions(),targets)
+    team=build_team_metrics(store.decisions(),targets,scores=scores)
     sessions=monthly_session_stats()
     tickets=incidents(limit=100000)
     dti=incident_month_summary(tickets)
@@ -134,20 +141,51 @@ def render_manager_overview(scores=None):
         'indicadores operativos consolidados de Adrián, Sofía y Soporte.</div>',
         unsafe_allow_html=True)
 
-    cards=[
-        ("Decisiones registradas",f'{team["decisions"]:,} / {team["decision_goal"]:,.0f}',
-         "Suma de los dos objetivos mensuales fijados por gerencia*",
+    # Tres indicadores de RIESGO en primer lugar. Productividad cuarto.
+    # No se establece objetivo para importe ni PD, porque más riesgo
+    # no representa un mejor desempeño. Mantener soporte como bloque aparte.
+    high_goal=float(targets.get("Riesgo alto atendido",15))*len(ANALYST_IDS)
+    high_progress=progress(team["risk_high"],high_goal)
+    risk_cards=[
+        ("Exposición alto riesgo · u.m.",
+         fmt_risk("Exposición alto riesgo evaluada",team["risk_exposure"]),
+         "Monto con sugerencia de rechazo y decisión registrada · NO pérdidas",
+         "neutral",None),
+        ("Casos alto riesgo evaluados",
+         f'{team["risk_high"]:,} / {int(high_goal):,}',
+         "Modelo recomendó Rechazar al evaluar · meta de revisión",
+         "green" if high_progress>=1 else "amber" if high_progress>=.5 else "red",
+         high_progress),
+        ("PD promedio evaluada",
+         fmt_risk("PD promedio evaluada",team["risk_pd"]),
+         "Probabilidad estimada por XGBoost · no default observado",
+         "neutral",None),
+        ("Decisiones registradas",
+         f'{team["decisions"]:,} / {team["decision_goal"]:,.0f}',
+         "Productividad del mes · meta conjunta de ambos analistas",
          "green" if reached>=1 else "amber" if reached>=.5 else "red",reached),
-        ("Meta mensual del equipo",f'{reached:.1%}',
-         "Avance en decisiones registradas por ambos analistas",
-         "green" if reached>=1 else "amber" if reached>=.5 else "red",reached),
-        ("Incidencias de Soporte resueltas",
-         f'{dti["solved"]} / {dti["total"]}',
+    ]
+    top=st.columns(4,gap="small")
+    for col,(label,val,detail,tone,completion) in zip(top,risk_cards):
+        with col:
+            st.markdown(_kcard(label,val,detail,tone,completion),
+                        unsafe_allow_html=True)
+    st.caption("Los tres primeros KPI son de riesgo crediticio, el cuarto es productividad. "
+               "La exposición se suma por monto del crédito de TEST con sugerencia Rechazar; "
+               "NO es pérdida evitada ni pérdida esperada. La PD no es una tasa de incumplimiento realizada. "
+               "El conteo se refiere a decisiones del mes de SQLite, no a toda la cartera pendiente.")
+
+    st.markdown('<div class="ac-mgr-section">Operación y soporte · indicadores complementarios</div>',
+                unsafe_allow_html=True)
+    other_cards=[
+        ("Incidencias de Soporte resueltas",f'{dti["solved"]} / {dti["total"]}',
          "Incidencias abiertas este mes y resueltas",
-         "green" if dti_reached is not None and dti_reached>=1 else "amber" if dti_reached is not None and dti_reached>=.5 else "neutral",dti_reached),
+         "green" if dti_reached is not None and dti_reached>=1 else "amber"
+         if dti_reached is not None and dti_reached>=.5 else "neutral",dti_reached),
         ("Resolución mensual de Soporte",f'{dti["rate"]:.1%}' if dti["rate"] is not None else "—",
          f'Meta de referencia: {dti_target:.0%} · sin casos = no evaluable',
-         "green" if dti_reached is not None and dti_reached>=1 else "amber" if dti_reached is not None and dti_reached>=.5 else "neutral",dti_reached),
+         "green" if dti_reached is not None and dti_reached>=1 else "amber"
+         if dti_reached is not None and dti_reached>=.5 else "neutral",dti_reached),
         ("Excepciones de crédito",f'{team["exceptions"]:,}',
          f'Justificadas: {team["justified"]:,} · notificación a gerencia',
          "amber" if team["exceptions"] else "green",None),
@@ -155,14 +193,12 @@ def render_manager_overview(scores=None):
          f'{total_closed_sessions} sesiones cerradas este mes · todos los perfiles',
          "neutral",None),
     ]
-    for start in (0,3):
-        cols=st.columns(3,gap="small")
-        for col,(label,val,desc,tone,p) in zip(cols,cards[start:start+3]):
-            with col:
-                st.markdown(_kcard(label,val,desc,tone,p),unsafe_allow_html=True)
-    st.caption("* Las metas de los dos analistas provienen de la misma consola de gerencia; "
-       "las cifras son decisiones registradas este mes en SQLite, no créditos futuros ni resultados de DEFAULT. "
-       "El tiempo representa el intervalo inicio-cierre de sesiones finalizadas, no tiempo de trabajo activo.")
+    for col,(label,val,detail,tone,completion) in zip(st.columns(4,gap="small"),other_cards):
+        with col:
+            st.markdown(_kcard(label,val,detail,tone,completion),
+                        unsafe_allow_html=True)
+    st.caption("* El tiempo es el intervalo inicio-cierre de sesiones finalizadas, "
+               "no tiempo de actividad. Datos crediticios sintéticos y SQLite temporal.")
 
     st.markdown('<div class="ac-mgr-section">Comparación y seguimiento por perfil</div>',
                 unsafe_allow_html=True)
@@ -171,8 +207,12 @@ def render_manager_overview(scores=None):
         profile=st.selectbox("Perfil",["Todos los perfiles","Adrián · A-017",
                            "Sofía · A-022","Soporte"],key="mgr_overview_filter")
     with f2:
-        selected=st.selectbox("Indicador de analistas",[x[0] for x in KPI_SPECS],
-           format_func=lambda x:KPI_MAP[x][1],key="mgr_overview_metric")
+        indicators=[x[0] for x in RISK_HEADLINES]+[
+            x[0] for x in KPI_SPECS if x[0] not in RISK_MAP
+        ]
+        selected=st.selectbox("Indicador de analistas",indicators,
+           format_func=lambda k:RISK_MAP[k][1] if k in RISK_MAP else KPI_MAP[k][1],
+           key="mgr_overview_metric")
     with f3:
         order=st.selectbox("Ordenar",["Mayor avance","Menor avance"],
                            key="mgr_overview_sort")
@@ -184,20 +224,27 @@ def render_manager_overview(scores=None):
         chosen_ids=(
            ["A-017"] if profile.startswith("Adrián") else
            ["A-022"] if profile.startswith("Sofía") else ["A-017","A-022"])
-        metric_type=KPI_MAP[selected][2]
-        goal=float(targets.get(selected,KPI_MAP[selected][3]))
+        has_goal=selected in KPI_MAP
+        metric_type=("rate" if selected == "PD promedio evaluada" else
+                     KPI_MAP[selected][2] if has_goal else "amount")
+        goal=float(targets.get(selected,KPI_MAP[selected][3])) if has_goal else None
         ranking=[]
         for aid in chosen_ids:
             person=ANALYST_IDS[aid]
             stats=team["individuals"][aid]
             value=stats["metrics"][selected]
-            pct=progress(value,goal)
+            pct=progress(value,goal) if has_goal else None
             ranking.append({"Analista":person,"Identificador":aid,
-                 "Registrado":fmt(selected,value),"Meta":fmt(selected,goal),
+                 "Registrado":fmt(selected,value) if has_goal else fmt_risk(selected,value),
+                 "Meta":fmt(selected,goal) if has_goal else "Informativo",
                  "Cumplimiento":f"{pct:.1%}" if pct is not None else "—",
-                 "Estado":"No evaluable" if pct is None else
-                          "Meta lograda" if pct>=1 else "En progreso",
-                 "_pct":-1 if pct is None else pct})
+                 "Estado":("No evaluable" if has_goal and pct is None else
+                           "Meta lograda" if has_goal and pct>=1 else
+                           "En progreso" if has_goal else
+                           "Sin dato" if value is None else "Riesgo observado"),
+                 "_pct":-1 if value is None else
+                        pct if has_goal and pct is not None else
+                        float(value) if not has_goal else -1})
         ranking.sort(key=lambda r:r["_pct"],reverse=order=="Mayor avance")
         st.dataframe(pd.DataFrame(ranking).drop(columns="_pct"),hide_index=True,
                      use_container_width=True)
@@ -214,11 +261,13 @@ def render_manager_overview(scores=None):
                     name=label,marker_color=analyst_color(aid),
                     text=[f"{value*mult:.1f}" if value is not None else "—"],
                     textposition="outside"))
-            fig.add_hline(y=goal*mult,line_dash="dash",line_color=GOAL_COLOR,
-                          annotation_text="Meta de gerencia")
+            if has_goal:
+                fig.add_hline(y=goal*mult,line_dash="dash",line_color=GOAL_COLOR,
+                              annotation_text="Meta de gerencia")
             fig.update_layout(title="¿Qué tan cerca está cada analista de su meta individual?",
                        showlegend=True,
-                       yaxis_title="Porcentaje (%)" if metric_type=="rate" else "Casos")
+                       yaxis_title=("Porcentaje (%)" if metric_type=="rate" else
+                                    "Importe (u.m.)" if metric_type=="amount" else "Casos"))
             _fig(fig,410)
         with right:
             fig=go.Figure()
@@ -241,20 +290,28 @@ def render_manager_overview(scores=None):
         table=[]
         for aid in chosen_ids:
             stats=team["individuals"][aid]
-            for key,short,kind,default,description in KPI_SPECS:
+            all_specs=[(k,label,kind,None,desc) for k,label,kind,desc in RISK_HEADLINES]
+            all_specs.extend(x for x in KPI_SPECS if x[0] not in RISK_MAP)
+            for key,short,kind,default,description in all_specs:
                 value=stats["metrics"][key]
-                target=float(targets.get(key,default))
-                ratio=progress(value,target)
+                has_target=key in KPI_MAP
+                target=float(targets.get(key,KPI_MAP[key][3])) if has_target else None
+                ratio=progress(value,target) if has_target else None
                 table.append({"Analista":ANALYST_IDS[aid],
-                  "KPI":short,"Registrado":fmt(key,value),
-                  "Meta":fmt(key,target),
+                  "KPI":short,
+                  "Registrado":fmt(key,value) if has_target else fmt_risk(key,value),
+                  "Meta":fmt(key,target) if has_target else "Informativo",
                   "Avance":f"{ratio:.0%}" if ratio is not None else "—",
-                  "Semáforo":("Sin base" if ratio is None else
-                              "Verde" if ratio>=1 else "Ámbar" if ratio>=.5 else "Rojo")})
+                  "Semáforo":("Sin base" if has_target and ratio is None else
+                              "Verde" if has_target and ratio>=1 else
+                              "Ámbar" if has_target and ratio>=.5 else
+                              "Rojo" if has_target else
+                              "Sin dato" if value is None else "Informativo")})
         st.dataframe(pd.DataFrame(table),hide_index=True,use_container_width=True,height=310)
-        st.caption("Los indicadores de atención cuentan el riesgo sugerido por XGBoost, "
-                   "no obligan a aceptar o rechazar solicitudes. El ranking no representa "
-                   "por sí solo calidad crediticia.")
+        st.caption("Exposición y PD son indicadores de riesgo informativos sin metas de aumento. "
+                   "Los conteos se basan en la sugerencia de XGBoost al decidir, "
+                   "no obligan a rechazar solicitudes. No se utiliza DEFAULT real "
+                   "para evaluar al personal ni se afirma que una pérdida fue evitada.")
 
     st.markdown('<div class="ac-mgr-section">Supervisión de incidencias · Soporte</div>',
                 unsafe_allow_html=True)
