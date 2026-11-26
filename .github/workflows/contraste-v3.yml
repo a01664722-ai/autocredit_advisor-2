@@ -25,8 +25,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar pytest para verificar la rubrica
-        run: python -m pip install pytest
+      - name: Instalar dependencias para ejecutar las pruebas del proyecto
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
       - name: Contraste WCAG 2.2 AA (texto 4.5:1, marcas 3:1)
         run: python scripts/check_contrast_b3.py
       - name: Verificar preguntas, acceso, filtros y estados vacios
