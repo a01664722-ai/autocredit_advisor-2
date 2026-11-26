@@ -1,9 +1,9 @@
-https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/43356710183
+https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/45741820563
 
 # Entregable 3 · Evidencia de la versión XGBoost V3
 
 **Aplicación:** https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/  
-**Código auditado:** rama `v3-integracion-xgboost-12v`, entrada `app_v3.py`. **Nota:** la primera línea enlaza una corrida verde anterior de V3; reemplazar por la nueva corrida verde que incluya `check_contrast_b3.py` tras verificarla. No se equipara el CI antiguo con WCAG.
+**Código auditado:** rama `v3-integracion-xgboost-12v`, entrada `app_v3.py`. **Primera línea:** corrida verde real del workflow de V3 que ejecuta contraste WCAG y pytest. La evidencia deberá volver a comprobarse antes de entregar si se modifica el código.
 
 ## 1. Gráficas y preguntas visibles
 
