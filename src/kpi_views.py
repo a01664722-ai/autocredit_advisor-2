@@ -64,14 +64,16 @@ def _metric_card(spec, value, goal, note="", assigned=None):
     color=COLOR[status]
     bg=BG[status]
     shown=(f"{int(value):,} / {int(goal):,}"
-           if key=="Decisiones mensuales" else fmt(key,value))
+           if key=="Decisiones mensuales" else
+           _fmt_priority(value) if key=="Prioridad riesgo alto" else fmt(key,value))
     caption="Meta mensual de gerencia: " if key=="Decisiones mensuales" else "Meta gerencial*: "
     shown_label="Atendidas vs meta" if key=="Decisiones mensuales" else title
+    shown_goal=(_fmt_priority(goal) if key=="Prioridad riesgo alto" else fmt(key,goal))
     return (
         f'<div class="ac-month-card" style="--ac-color:{color};--ac-bg:{bg}">'
         f'<div class="label">{html.escape(shown_label)}</div>'
         f'<div class="reading">{html.escape(shown)}</div>'
-        f'<div class="goal">{caption}{html.escape(fmt(key,goal))}</div>'
+        f'<div class="goal">{caption}{html.escape(shown_goal)}</div>'
         f'<div class="track"><div class="fill" style="width:{reached:.2f}%"></div></div>'
         f'<div class="detail">{html.escape(progress_text if not note else note+" · "+progress_text)}</div>'
         '</div>'
