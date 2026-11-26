@@ -1,0 +1,37 @@
+# Investigación 3 · Jerarquía visual, contraste e inclusión
+
+**Alcance:** análisis documental del código de `main` con fuentes normativas, sin alterar pantallas ni colores. La «investigación 1» original de diseño no está incorporada en el repositorio actual, por lo que **no se presenta esta síntesis como aquella investigación histórica**.
+
+## Criterios verificables
+
+1. **Prioridad de información:** antes que la gráfica, el usuario necesita saber su decisión. En P1 los KPIs y filtros preceden a la tabla que responde «¿Qué solicitud reviso primero?»; en P3 la gerencia filtra antes de simular política; en P4 la operación examina las alertas antes del detalle. Diseño sustentado en las tareas definidas para Adrián, Mariana y Luis en `src/seguridad.py`, `src/config.py` y en la retroalimentación de octubre.
+2. **Contraste:** WCAG 2.2, criterio 1.4.3, exige al menos **4.5:1** para texto normal y **3:1** para texto grande. El criterio 1.4.11 exige **3:1** en componentes y gráficos relevantes. Se aplica la luminancia relativa del sRGB. Fuente normativa: https://www.w3.org/TR/WCAG22/ (secciones 1.4.3 y 1.4.11).
+3. **Sin depender solo del color:** WCAG 1.4.1 exige etiquetas, íconos u otra señal además del color. En `src/ui.py` el semáforo incluye las palabras «En banda», «Vigilar», «Fuera de banda» y «Sin datos frescos», además de color e ícono. Fuente: https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html.
+4. **Estado vacío y autorización:** una pantalla sin selección o muestra válida debe explicar por qué y recuperar el flujo; `vistas/p3_cartera.py` detiene el flujo inválido con `st.stop()`. El acceso por rol debe verificarse en servidor; `src/auth.py` y `src/seguridad.py` implementan la separación.
+
+## Medición documental de pares de color del código
+
+Cálculo con luminancia lineal sRGB y contraste `(L_mayor + 0.05)/(L_menor + 0.05)`. Son **pares del código**, no una auditoría con navegador de cada píxel/renderizado:
+
+| Par del código | Razón | Uso/umbral | Resultado |
+|---|---:|---|---|
+| `#0b0b0b` / `#ffffff` | 19.68:1 | texto normal ≥4.5 | Cumple |
+| `#52514e` / `#ffffff` | 7.94:1 | texto normal ≥4.5 | Cumple |
+| `#f0efec` / `#0f1110` | 16.48:1 | texto normal ≥4.5 | Cumple |
+| `#d03b3b` / `#ffffff` | 4.80:1 | texto normal ≥4.5 | Cumple si se usa como texto |
+| `#898781` / `#ffffff` | 3.59:1 | texto normal ≥4.5 | **No cumple si se usa como texto normal** |
+| `#ffffff` / `#0f8a4f` | 4.40:1 | texto normal ≥4.5 | **No cumple si el botón usa texto blanco** |
+| `#0ca30c` / `#ffffff` | 3.35:1 | marca/gráfico ≥3 | Cumple como elemento no textual; no cumple como texto normal |
+
+**Importante:** algunos tonos de rejilla son decorativos y no necesariamente están sujetos al criterio de 3:1. El resultado global requiere verificar el DOM y capturas reales para confirmar los pares efectivamente adyacentes y el tamaño de letra.
+
+## Hallazgo frente al criterio binario de la rúbrica
+
+El workflow existente `.github/workflows/pruebas.yml` corre validación de CSV y `pytest`, **no contiene aún una prueba de contraste en CI**. Además, se identificaron pares potencialmente insuficientes. Por instrucción del equipo de **no alterar el dashboard** ni comprometer su funcionamiento, esta revisión **no modifica colores, CSS, ni la lógica del workflow** y **no afirma que esté aprobada toda WCAG 2.2 AA**. Para cerrar el punto se necesitan auditoría de los pares realmente renderizados, posibles ajustes mínimos autorizados y un chequeo obligatorio que falle ante regresiones de contraste.
+
+## Fuentes
+
+- World Wide Web Consortium. (2023). *Web Content Accessibility Guidelines (WCAG) 2.2*. https://www.w3.org/TR/WCAG22/
+- World Wide Web Consortium. (s. f.). *Understanding SC 1.4.1: Use of Color*. https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html
+- World Wide Web Consortium. (s. f.). *Understanding SC 1.4.11: Non-text Contrast*. https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html
+- Código auditado: `.streamlit/config.toml`, `src/graficas.py`, `src/ui.py`, `vistas/p1_bandeja.py`, `vistas/p3_cartera.py` y `vistas/p4_monitor.py`.

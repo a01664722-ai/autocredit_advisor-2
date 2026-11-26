@@ -1,3 +1,5 @@
+https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/
+
 # AutoCredit Advisor · Build y Test
 
 Dashboard de riesgo de crédito en Streamlit. La base `data/Base_SAS_Equipo3.csv` contiene 80,000 registros y 12 columnas. La información se organiza por perfil: analistas, gerencia y soporte.
@@ -51,3 +53,15 @@ La app ofrece cuentas de demostración para analistas (Adrián y Sofía), gerenc
 - **POLÍTICA:** umbrales definidos por el equipo.
 
 La base no incluye un identificador de crédito ni fechas de solicitudes. Esos campos se señalan como simulados. La tasa de incumplimiento y el DTI promedio se calculan a partir de la fuente real.
+
+## Seguimiento de la retroalimentación M4C · Bloques 1–3 (documentación)
+
+| Bloque | Evidencia ordenada | Estado relevante |
+|---|---|---|
+| **B1 · Plan / Design** | [Contrato del prompt](contrato-prompt.md), [registro de prompts B1](prompts/B1.md), [observaciones del profesor](docs/entregable-1.md) | La URL y app funcionaban; se recuperó la documentación con límites históricos explícitos. |
+| **B2 · Build / Test** | [Investigación Anthropic](investigacion/claude.md), [datos](contrato-datos.md), [prompts B2](prompts/B2.md), [cierre B2](docs/entregable-2.md) | El profesor acreditó las partes 1 y 2; falta unificar el historial del repo B1 antiguo. |
+| **B3 · Deploy / accesibilidad** | [Ficha de seis secciones](docs/entregable-3.md), [investigación visual](investigacion/visual-jerarquia.md), [prompts B3](prompts/B3.md) | **Contraste en CI aún no implementado**, y falta la investigación 1 original; no se declara cumplimiento total. |
+
+**No se modificaron** los archivos de la aplicación, las pantallas, los colores, las gráficas, la base, el modelo, las pruebas ni los workflows. Estos archivos adicionales únicamente organizan evidencia comprobable.
+
+**Continuidad Git:** la retroalimentación del profesor identifica dos repositorios de origen sin ancestro común. Queda pendiente el merge real de historias con resolución de conflictos; la sola documentación **no corrige** ese criterio. Repositorio definitivo: https://github.com/a01664722-ai/autocredit_advisor-2.
