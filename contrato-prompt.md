@@ -1,4 +1,4 @@
-# Contrato del prompt — Equipo 3 · AutoCredit Advisor
+# Contrato del prompt - Equipo 3  
 
 **Bloque:** Entregable 1 (Plan / Design). **Repositorio definitivo:** https://github.com/a01664722-ai/autocredit_advisor-2
 
