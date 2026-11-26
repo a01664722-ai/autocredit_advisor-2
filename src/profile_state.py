@@ -57,9 +57,12 @@ def demo_sign_in(session: MutableMapping, selected_profile: str, personas: dict)
 
 
 def demo_sign_out(session: MutableMapping) -> None:
-    """Cierra la sesión de interfaz sin alterar decisiones ni mensajes en SQLite."""
+    """Cierra perfil sin borrar accesibilidad ni datos persistidos en SQLite."""
+    preferences = {k: session[k] for k in ("ac_visual_theme", "ac_cvd_mode")
+                   if k in session}
     for key in list(session):
         session.pop(key, None)
+    session.update(preferences)
 
 
 def demo_current_profile(session: MutableMapping, personas: dict):
