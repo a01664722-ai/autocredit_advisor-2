@@ -154,7 +154,7 @@ def render_analyst_month(name,analyst_id,score_df):
             st.markdown(_risk_primary_card(spec, stats["metrics"][key], targets,
                                             assigned=stats["assigned"]),
                         unsafe_allow_html=True)
-    st.caption("Atención prioritaria = solicitudes atendidas este mes con sugerencia "
+    st.caption("Atención prioritaria de riesgo alto = solicitudes atendidas este mes con sugerencia "
                "de riesgo alto (Rechazar) / todas las solicitudes atendidas este mes. "
                "Mariana establece la meta porcentual para supervisar la priorización; "
                "no es tasa de incumplimiento ni obliga a rechazar. "
