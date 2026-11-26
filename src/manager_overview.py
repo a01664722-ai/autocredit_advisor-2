@@ -112,6 +112,7 @@ def build_team_metrics(records, targets, reference=None, scores=None):
     avg_pd=(sum(count*pd for count,pd in pd_rows if pd is not None)/n
             if n and all(count==0 or pd is not None for count,pd in pd_rows) else None)
     risk_high=sum(x["metrics"]["Riesgo alto atendido"] for x in individuals.values())
+    risk_priority=risk_high/n if n else None
     default_parts=[(x["reject_default_n"],x["reject_valid_n"]) for x in individuals.values()]
     default_valid=all(num is not None and den is not None for num,den in default_parts)
     default_n=sum(num for num,_ in default_parts) if default_valid else None
@@ -124,7 +125,7 @@ def build_team_metrics(records, targets, reference=None, scores=None):
                 risk_rejection_n=default_n,risk_rejection_total=default_den,
                 completion=progress(n,target),exceptions=exc,justified=justified,
                 agreement=agreement, risk_exposure=exposure,
-                risk_high=risk_high, risk_pd=avg_pd,
+                risk_high=risk_high, risk_priority=risk_priority, risk_pd=avg_pd,
                 justification_rate=justified/exc if exc else None,
                 period=next(iter(individuals.values()))["period"])
 
@@ -151,18 +152,20 @@ def render_manager_overview(scores=None):
         'indicadores operativos consolidados de Adrián, Sofía y Soporte.</div>',
         unsafe_allow_html=True)
 
-    # La primera tasa contrasta sugerencias históricas de rechazo con DEFAULT
-    # conocido de TEST. No afirma mora posterior al rechazo. Productividad cuarta.
-    # Conservar Soporte y los controles de metas sin alterar.
+    # KPI 1: priorización del riesgo alto vs meta gerencial compartida;
+    # KPI 4: atenciones mensuales vs la meta de ambos analistas.
+    # No se alteran Soporte, decisiones, modelo ni política.
+    priority_goal=float(targets.get("Prioridad riesgo alto",.60))
+    priority_progress=progress(team["risk_priority"],priority_goal)
     high_goal=float(targets.get("Riesgo alto atendido",15))*len(ANALYST_IDS)
     high_progress=progress(team["risk_high"],high_goal)
     risk_cards=[
-        ("Rechazos con default (TEST)",
-         fmt_risk("Rechazos con incumplimiento TEST",team["risk_rejection_rate"]),
-         (f'{team["risk_rejection_n"]:,} de {team["risk_rejection_total"]:,} sugerencias de rechazo'
-          if team["risk_rejection_total"] is not None else "Sin datos verificables de TEST")
-         + " · retrospectivo, no posterior al rechazo",
-         "neutral",None),
+        ("Atención prioritaria de riesgo alto",
+         f'{fmt("Prioridad riesgo alto",team["risk_priority"])} / {fmt("Prioridad riesgo alto",priority_goal)}',
+         f'{team["risk_high"]:,} de {team["decisions"]:,} atendidas con sugerencia Rechazar · meta de gerencia',
+         "neutral" if priority_progress is None else
+         "green" if priority_progress>=1 else "amber" if priority_progress>=.5 else "red",
+         priority_progress),
         ("Casos alto riesgo evaluados",
          f'{team["risk_high"]:,} / {int(high_goal):,}',
          "Modelo recomendó Rechazar al evaluar · meta de revisión",
@@ -172,9 +175,9 @@ def render_manager_overview(scores=None):
          fmt_risk("PD promedio evaluada",team["risk_pd"]),
          "Probabilidad estimada por XGBoost · no default observado",
          "neutral",None),
-        ("Atendidas / asignadas TEST",
-         f'{team["decisions"]:,} / {team["assigned"]:,}' if team["assigned"] is not None else "—",
-         f'Atendidas este mes · meta gerencial: {team["decision_goal"]:,.0f} casos',
+        ("Atendidas vs meta",
+         f'{team["decisions"]:,} / {int(team["decision_goal"]):,}',
+         "Decisiones mensuales · objetivo conjunto definido por gerencia",
          "green" if reached>=1 else "amber" if reached>=.5 else "red",reached),
     ]
     top=st.columns(4,gap="small")
@@ -182,11 +185,11 @@ def render_manager_overview(scores=None):
         with col:
             st.markdown(_kcard(label,val,detail,tone,completion),
                         unsafe_allow_html=True)
-    st.caption("Primer KPI: de las solicitudes revisadas este mes para las que XGBoost sugirió "
-               "Rechazar, porcentaje con DEFAULT = 1 en TEST (validación retrospectiva). "
-               "No significa que incumplieron después de rechazarse. La PD no es default observado. "
-               "Productividad = atendidas del mes / solicitudes asignadas del TEST; "
-               "la meta gerencial editable se refiere a decisiones mensuales.")
+    st.caption("Atención prioritaria de riesgo alto = solicitudes del mes con recomendación "
+               "Rechazar / total de solicitudes atendidas este mes. La meta porcentual "
+               "la establece Mariana para supervisar la priorización; no representa "
+               "incumplimientos ni exige rechazar. Atendidas vs meta compara decisiones "
+               "del mes con la meta mensual gerencial de ambos analistas.")
 
     st.markdown('<div class="ac-mgr-section">Operación y soporte · indicadores complementarios</div>',
                 unsafe_allow_html=True)
@@ -238,7 +241,7 @@ def render_manager_overview(scores=None):
            ["A-017"] if profile.startswith("Adrián") else
            ["A-022"] if profile.startswith("Sofía") else ["A-017","A-022"])
         has_goal=selected in KPI_MAP
-        metric_type=("rate" if selected in ("PD promedio evaluada", "Rechazos con incumplimiento TEST") else
+        metric_type=("rate" if selected == "PD promedio evaluada" else
                      KPI_MAP[selected][2] if has_goal else "amount")
         goal=float(targets.get(selected,KPI_MAP[selected][3])) if has_goal else None
         ranking=[]
@@ -326,10 +329,11 @@ def render_manager_overview(scores=None):
                               "Rojo" if has_target else
                               "Sin dato" if value is None else "Informativo")})
         st.dataframe(pd.DataFrame(table),hide_index=True,use_container_width=True,height=310)
-        st.caption("La tasa de rechazos con DEFAULT = 1 usa exclusivamente resultados de TEST "
-                   "para revisar retrospectivamente las sugerencias del modelo; no mide "
-                   "incumplimientos posteriores al rechazo ni califica al personal. "
-                   "Las metas de trabajo y sus controles siguen en la consola de Mariana.")
+        st.caption("La prioridad de riesgo alto mide la proporción de casos revisados "
+                   "con recomendación Rechazar y tiene meta gerencial editable. "
+                   "No mide incumplimiento observado ni obliga a rechazar, y la PD "
+                   "permanece informativa sin meta. Las metas se administran en "
+                   "la consola Analistas y KPI de Mariana.")
 
     st.markdown('<div class="ac-mgr-section">Supervisión de incidencias · Soporte</div>',
                 unsafe_allow_html=True)

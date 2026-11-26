@@ -1,7 +1,5 @@
-"""Pruebas integradas: riesgo de crédito en P1, analistas y gerencia.
-
-El primer KPI usa DEFAULT de TEST para validar recomendaciones de rechazo
-retrospectivamente, NO como incumplimiento posterior ni evaluación del personal.
+"""Pruebas integradas: prioridad de riesgo y productividad frente a metas
+compartidas entre P1, analistas y gerencia. La prioridad no usa DEFAULT.
 """
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -58,7 +56,7 @@ def rows():
 def test_risk_kpi_are_three_risk_and_one_productivity(rows, scored):
     names = [item[0] for item in RISK_HEADLINES]
     assert names == [
-        "Rechazos con incumplimiento TEST",
+        "Prioridad riesgo alto",
         "Riesgo alto atendido",
         "PD promedio evaluada",
         "Decisiones mensuales",
@@ -66,6 +64,7 @@ def test_risk_kpi_are_three_risk_and_one_productivity(rows, scored):
     stat = monthly_summary(rows, "A-017", REF, scored)
     assert stat["metrics"]["Exposición alto riesgo evaluada"] == pytest.approx(50000.0)
     assert stat["metrics"]["Rechazos con incumplimiento TEST"] == pytest.approx(1/2)
+    assert stat["metrics"]["Prioridad riesgo alto"] == pytest.approx(2/3)
     assert (stat["reject_default_n"], stat["reject_valid_n"]) == (1, 2)
     assert stat["assigned"] == 4
     assert stat["metrics"]["Riesgo alto atendido"] == 2
@@ -75,6 +74,7 @@ def test_risk_kpi_are_three_risk_and_one_productivity(rows, scored):
     assert stat["overrides"] == 1
     assert fmt_risk("Exposición alto riesgo evaluada", 50000) == "50,000 u.m."
     assert fmt_risk("Rechazos con incumplimiento TEST", 0.5) == "50.0%"
+    assert fmt_risk("Prioridad riesgo alto", 2/3) == "66.7%"
     assert fmt_risk("PD promedio evaluada", .2466666) == "24.7%"
 
 
@@ -84,6 +84,10 @@ def test_manager_and_analysts_share_exact_same_source(rows, scored):
     a = team["individuals"]["A-017"]
     b = team["individuals"]["A-022"]
     assert team["risk_high"] == 3
+    assert team["risk_priority"] == pytest.approx(3/5)
+    assert team["risk_priority"] == pytest.approx(
+        (a["count"]*a["metrics"]["Prioridad riesgo alto"] +
+         b["count"]*b["metrics"]["Prioridad riesgo alto"]) / team["decisions"])
     assert team["risk_high"] == (a["metrics"]["Riesgo alto atendido"] +
                                   b["metrics"]["Riesgo alto atendido"])
     assert team["risk_exposure"] == pytest.approx(90000.)
@@ -110,6 +114,7 @@ def test_historical_rejection_rate_changes_with_test_default_without_changing_ot
     assert first["risk_exposure"] == second["risk_exposure"]
     assert first["risk_high"] == second["risk_high"]
     assert first["risk_pd"] == second["risk_pd"]
+    assert first["risk_priority"] == second["risk_priority"] == pytest.approx(3/5)
     assert first["risk_rejection_rate"] == pytest.approx(1/3)
     assert second["risk_rejection_rate"] == pytest.approx(2/3)
 
@@ -126,6 +131,7 @@ def test_missing_or_foreign_amount_never_counted_as_zero(rows, scored):
     assert monthly_summary([], "A-017", REF, scored)["metrics"]["Exposición alto riesgo evaluada"] == 0.0
     assert monthly_summary([], "A-017", REF, scored)["metrics"]["PD promedio evaluada"] is None
     assert monthly_summary([], "A-017", REF, scored)["metrics"]["Rechazos con incumplimiento TEST"] is None
+    assert monthly_summary([], "A-017", REF, scored)["metrics"]["Prioridad riesgo alto"] is None
 
 
 def test_updated_decisions_not_double_counted_and_manager_targets_notify(tmp_path, monkeypatch):
@@ -140,13 +146,19 @@ def test_updated_decisions_not_double_counted_and_manager_targets_notify(tmp_pat
     assert a["metrics"]["Exposición alto riesgo evaluada"] == 20000.0
     assert a["metrics"]["PD promedio evaluada"] == pytest.approx(.51)
     assert a["metrics"]["Rechazos con incumplimiento TEST"] == pytest.approx(1.0)
+    assert a["metrics"]["Prioridad riesgo alto"] == pytest.approx(1.0)
     assert a["assigned"] == 1
-    assert store.set_targets_batch({"Riesgo alto atendido": 21, "Decisiones mensuales": 60},
-                                   "Mariana")
+    assert store.targets()["Prioridad riesgo alto"] == pytest.approx(.60)
+    assert store.set_targets_batch({"Riesgo alto atendido": 21,
+                                    "Decisiones mensuales": 60,
+                                    "Prioridad riesgo alto": .75}, "Mariana")
     assert store.targets()["Riesgo alto atendido"] == 21
+    assert store.targets()["Prioridad riesgo alto"] == pytest.approx(.75)
     assert store.unread("analista", "A-017") == 1
     assert store.unread("analista", "A-022") == 1
     assert "21" in store.messages("analista", "A-017")[0]["body"]
+    assert "75%" in store.messages("analista", "A-017")[0]["body"]
+    assert "75%" in store.messages("analista", "A-022")[0]["body"]
     assert store.decisions()[0]["pd_xgb"] == pytest.approx(.51)
 
 
@@ -162,9 +174,39 @@ def test_actual_ui_calls_share_same_scored_and_neon_border():
     assert "render_manager_overview(M.scores)" in app
     assert "team=build_team_metrics(store.decisions(),targets,scores=scores)" in manager
     assert "outline:2px solid #52dc9a!important" in app
-    assert "Rechazos con default (TEST)" in app
-    assert "Atendidas / asignadas TEST" in app
-    assert "Atendidas / asignadas TEST" in analyst
-    assert "Atendidas / asignadas TEST" in manager
+    assert "Atención prioritaria de riesgo alto" in app
+    assert "Atención prioritaria de riesgo alto" in analyst
+    assert "Atención prioritaria de riesgo alto" in manager
+    assert "Atendidas vs meta" in app
+    assert "Atendidas vs meta" in analyst
+    assert "Atendidas vs meta" in manager
+    assert "Atendidas / asignadas TEST" not in app
+    assert "Atendidas / asignadas TEST" not in analyst
+    assert "Atendidas / asignadas TEST" not in manager
+    assert "Prioridad riesgo alto" in manager
+    assert "Prioridad riesgo alto" in analyst
     assert "goal_decisions=float(targets.get(\"Decisiones mensuales\",50))" in manager
     assert "y=[goal_decisions/month_days,goal_decisions]" in manager
+
+
+def test_risk_priority_is_not_model_agreement_or_default(rows, scored):
+    """La mezcla de casos no castiga decisiones humanas justificadas."""
+    stats=monthly_summary(rows,"A-017",REF,scored)
+    assert stats["count"]==3
+    # El segundo caso fue ACEPTADO pese a sugerencia de rechazo.
+    assert stats["overrides"]==1
+    assert stats["metrics"]["Prioridad riesgo alto"]==pytest.approx(2/3)
+    changed=scored.copy()
+    changed["DEFAULT"]=1-changed["DEFAULT"]
+    assert monthly_summary(rows,"A-017",REF,changed)["metrics"]["Prioridad riesgo alto"]==pytest.approx(2/3)
+
+
+def test_risk_priority_goals_validate_and_reject_invalid_values(tmp_path,monkeypatch):
+    monkeypatch.setattr(store,"DB",tmp_path/"risk_targets.sqlite")
+    store.initialize(.159)
+    assert store.targets()["Prioridad riesgo alto"]==pytest.approx(.60)
+    with pytest.raises(ValueError):
+        store.set_targets_batch({"Prioridad riesgo alto":1.25},"Mariana")
+    with pytest.raises(ValueError):
+        store.set_targets_batch({"Prioridad riesgo alto":0},"Mariana")
+    assert store.targets()["Prioridad riesgo alto"]==pytest.approx(.60)

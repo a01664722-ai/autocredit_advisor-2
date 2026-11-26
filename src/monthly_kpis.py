@@ -18,19 +18,22 @@ KPI_SPECS = (
     ("Riesgo bajo atendido", "Riesgo bajo atendido", "count", 15, "Casos con sugerencia Aceptar revisados"),
     ("Coincidencia con sugerencia", "Coincidencia con XGBoost", "rate", 0.80, "Proporción de decisiones que coinciden"),
     ("Con justificación", "Excepciones justificadas", "rate", 1.00, "Excepciones con motivo y detalle válido"),
+    ("Prioridad riesgo alto", "Atención prioritaria de riesgo alto", "rate", 0.60,
+     "De todas las solicitudes atendidas en el mes, proporción con sugerencia XGBoost Rechazar. La meta supervisa priorización, no la calidad de la decisión."),
 )
 # Los cuatro indicadores que abren P1, Mis indicadores y la supervisión de gerencia.
-# Exposición y PD son señales informativas de riesgo, no cuotas de rendimiento:
-# NO se incentiva elevar la PD ni el importe de créditos peligrosos.
+# El primero mide qué parte del trabajo mensual se dedica a revisar riesgo alto;
+# es una meta de priorización configurable, NO una medición de pérdidas evitadas.
+# La PD permanece descriptiva y sin cuota de aumento.
 RISK_HEADLINES = (
-    ("Rechazos con incumplimiento TEST", "Rechazos con default (TEST)", "risk_rate",
-     "De los casos revisados este mes con recomendación Rechazar, porcentaje con DEFAULT = 1 en TEST. Resultado retrospectivo, NO incumplimiento posterior al rechazo"),
+    ("Prioridad riesgo alto", "Atención prioritaria de riesgo alto", "risk_rate",
+     "Casos atendidos del mes con sugerencia Rechazar / total atendido del mes. Meta de priorización definida por gerencia; no implica resultado crediticio ni obliga a rechazar."),
     ("Riesgo alto atendido", "Casos de alto riesgo", "risk_count",
      "Solicitudes evaluadas cuyo XGBoost recomendó Rechazar al decidir"),
     ("PD promedio evaluada", "PD promedio evaluada", "risk_pd",
      "Probabilidad de incumplimiento promedio de las solicitudes con decisión este mes; NO tasa de default observada"),
-    ("Decisiones mensuales", "Decisiones del mes", "productivity",
-     "Número de solicitudes con decisión registrada este mes"),
+    ("Decisiones mensuales", "Atendidas vs meta", "productivity",
+     "Solicitudes distintas atendidas en el mes / meta mensual definida por gerencia"),
 )
 RISK_MAP = {spec[0]: spec for spec in RISK_HEADLINES}
 KPI_MAP = {spec[0]: spec for spec in KPI_SPECS}
@@ -147,6 +150,7 @@ def monthly_summary(records, analyst_id=None, reference=None, scored=None):
         "Rechazos con incumplimiento TEST": reject_default_rate,
         "Exposición alto riesgo evaluada": risk_amount,
         "PD promedio evaluada": avg_pd,
+        "Prioridad riesgo alto": len(high_rows) / n if n else None,
         "Decisiones mensuales": n,
         "Riesgo alto atendido": sum(x.get("suggested") == "Rechazar" for x in current),
         "Riesgo medio atendido": sum(x.get("suggested") == "Condicionar" for x in current),
@@ -205,7 +209,7 @@ def fmt_risk(metric, value):
         return "—"
     if metric == "Exposición alto riesgo evaluada":
         return f"{float(value):,.0f} u.m."
-    if metric in ("PD promedio evaluada", "Rechazos con incumplimiento TEST"):
+    if metric in ("PD promedio evaluada", "Rechazos con incumplimiento TEST", "Prioridad riesgo alto"):
         return f"{float(value):.1%}"
     return fmt(metric, value)
 
