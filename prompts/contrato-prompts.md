@@ -69,9 +69,18 @@ Se transcribe **solo el fragmento literal** aportado al equipo. El texto recibid
 
 **Nota de autenticidad:** el fragmento se recibió sin la parte final y con el marcador «Pega aquí...». No se afirma que esa sección haya sido completada ni que se conserve el prompt histórico íntegro.
 
-## 4. Qué devolvió el asistente (evidencia verificable)
+## 4. Qué devolvió la IA (respuesta de producto y evidencia recuperada)
 
-**La respuesta textual exacta de la IA no está archivada.** El resultado del desarrollo sí puede comprobarse: en el repositorio original de B1 se construyeron `app.py`, `vistas/p0_login.py` a `p6_gobierno.py`, `src/` y `tests/`; la aplicación se publicó en Streamlit. Esa es evidencia de *producto*, no transcripción de la salida del asistente.
+**Sí hubo respuestas de la IA y se han identificado ejemplos concretos en conversaciones previas del equipo.** El resultado inicial fue una aplicación de Streamlit para los perfiles Adrián, Mariana y Luis, con pantallas organizadas en `vistas/`, lógica en `src/`, pruebas en `tests/` y una versión pública en Streamlit. Esa estructura se comprueba en el repositorio histórico de B1: https://github.com/a01659312-iis/autocredit_advisor---9nov.
+
+**Respuesta posterior recuperada: evolución de los indicadores por perfil (3 de noviembre, hora de CDMX; registrada el 4 de noviembre UTC).** En esa conversación, el asistente entregó:
+
+1. **Primera iteración de indicadores:** archivo `AutoCredit_Advisor_Semana1_KPIs.zip`, incorporación de la pantalla **P7 · Mis indicadores**, tres KPI iniciales y reporte de **12 pruebas aprobadas**; referencia al documento `ENTREGA_SEMANA1_KPI.md`.
+2. **Iteración ampliada por perfil:** archivo `AutoCredit_Advisor_KPIs_Por_Perfil.zip`, propuesta de KPI para **Adrián/Sofía (solicitudes, pendientes y revisión), Mariana (cartera, incumplimiento y DTI) y Luis (completitud y vigilancia de datos)**; reporte de **17 pruebas aprobadas**. Entre los resultados comunicados figuraban **80,000 registros**, **13.48 % de incumplimiento histórico**, **29.61 % de DTI promedio**, **100 % de completitud en variables críticas** y **cero valores fuera de límites**. La respuesta también distinguió las métricas de evaluación de modelos como pendientes de integrar con resultados verificables.
+
+**Qué entregó, en dos líneas:** una aplicación Streamlit modular y desplegable para decidir por rol; posteriormente, pantallas de indicadores por perfil con cifras provenientes de la base y pruebas automatizadas.
+
+**Alcance de autenticidad:** lo anterior es un **resumen fiel de respuestas posteriores efectivamente localizadas**, no una transcripción literal íntegra de la respuesta inmediatamente posterior al prompt inicial del 2 de noviembre. El texto completo de esa primera respuesta **todavía no se ha recuperado**; no se inventa ni se adjudica la iteración P7 a una fecha anterior. Véase `prompts/B1.md`, entrada P-003.
 
 ## 5. Qué cambió el equipo frente al resultado
 
