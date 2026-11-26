@@ -23,8 +23,8 @@ KPI_SPECS = (
 # Exposición y PD son señales informativas de riesgo, no cuotas de rendimiento:
 # NO se incentiva elevar la PD ni el importe de créditos peligrosos.
 RISK_HEADLINES = (
-    ("Exposición alto riesgo evaluada", "Exposición de alto riesgo", "risk_amount",
-     "Importe de préstamos con recomendación Rechazar que tuvieron decisión este mes; en u.m., NO pérdida evitada"),
+    ("Rechazos con incumplimiento TEST", "Rechazos con default (TEST)", "risk_rate",
+     "De los casos revisados este mes con recomendación Rechazar, porcentaje con DEFAULT = 1 en TEST. Resultado retrospectivo, NO incumplimiento posterior al rechazo"),
     ("Riesgo alto atendido", "Casos de alto riesgo", "risk_count",
      "Solicitudes evaluadas cuyo XGBoost recomendó Rechazar al decidir"),
     ("PD promedio evaluada", "PD promedio evaluada", "risk_pd",
@@ -73,6 +73,8 @@ def monthly_summary(records, analyst_id=None, reference=None, scored=None):
             current.append({**row, "_local_dt": t})
 
     n = len(current)
+    assigned = (int(scored["ANALISTA_ID"].eq(analyst_id).sum())
+                if scored is not None and analyst_id is not None else None)
     high_rows = [r for r in current if r.get("suggested") == "Rechazar"]
     amounts = None
     if scored is not None:
@@ -98,6 +100,30 @@ def monthly_summary(records, analyst_id=None, reference=None, scored=None):
         )
         risk_amount = sum(item[1] for item in matched) if valid else None
 
+    # Validación retrospectiva sobre TEST: NO se afirma que un rechazo
+    # generara un incumplimiento posterior, ni se evalúa al analista por DEFAULT.
+    # Cada fila conserva identidad de Loan ID y analista para evitar mezclas.
+    if not high_rows:
+        reject_defaults, reject_validos = 0, 0
+    elif scored is None or "DEFAULT" not in scored.columns:
+        reject_defaults, reject_validos = None, None
+    else:
+        outcomes = {
+            str(loan): (str(aid), outcome)
+            for loan, aid, outcome in scored[["LOAN_ID", "ANALISTA_ID", "DEFAULT"]].itertuples(index=False, name=None)
+        }
+        matched = [outcomes.get(str(row.get("loan_id"))) for row in high_rows]
+        valid = all(
+            item is not None
+            and item[0] == str(row.get("analyst_id"))
+            and item[1] in (0, 1)
+            for row, item in zip(high_rows, matched)
+        )
+        reject_defaults = sum(int(item[1]) for item in matched) if valid else None
+        reject_validos = len(high_rows) if valid else None
+    reject_default_rate = (reject_defaults / reject_validos
+                           if reject_validos else None)
+
     pd_values = []
     for row in current:
         try:
@@ -118,6 +144,7 @@ def monthly_summary(records, analyst_id=None, reference=None, scored=None):
         "Rechazar": sum(x.get("decision") == "Rechazar" for x in current),
     }
     metrics = {
+        "Rechazos con incumplimiento TEST": reject_default_rate,
         "Exposición alto riesgo evaluada": risk_amount,
         "PD promedio evaluada": avg_pd,
         "Decisiones mensuales": n,
@@ -138,6 +165,9 @@ def monthly_summary(records, analyst_id=None, reference=None, scored=None):
         running.append(total)
     return {
         "metrics": metrics,
+        "reject_default_n": reject_defaults,
+        "reject_valid_n": reject_validos,
+        "assigned": assigned,
         "rows": current,
         "count": n,
         "overrides": len(overrides),
@@ -175,7 +205,7 @@ def fmt_risk(metric, value):
         return "—"
     if metric == "Exposición alto riesgo evaluada":
         return f"{float(value):,.0f} u.m."
-    if metric == "PD promedio evaluada":
+    if metric in ("PD promedio evaluada", "Rechazos con incumplimiento TEST"):
         return f"{float(value):.1%}"
     return fmt(metric, value)
 
