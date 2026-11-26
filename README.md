@@ -60,9 +60,9 @@ La base no incluye un identificador de crédito ni fechas de solicitudes. Esos c
 |---|---|---|
 | **B1 · Plan / Design** | [Contrato del prompt](contrato-prompt.md), [registro de prompts B1](prompts/B1.md), [observaciones del profesor](docs/entregable-1.md) | La URL y app funcionaban; se recuperó la documentación con límites históricos explícitos. |
 | **B2 · Build / Test** | [Investigación Anthropic](investigacion/claude.md), [contrato de datos](contrato-datos.md), [prompts B2](prompts/B2.md), [evidencia B2](docs/entregable-2.md) | Investigación, contrato de datos, validaciones, pruebas y CI reunidos en este repositorio. |
-| **B3 · Lectura, accesibilidad y acceso** | [Ficha de seis secciones](docs/entregable-3.md), [investigación 1](investigacion/1-user-persona.md) y [estudio de accesibilidad B3](investigacion/B3.md), [prompts B3](prompts/B3.md) | **Contraste en CI aún no implementado**, y falta la investigación 1 original; no se declara cumplimiento total. |
+| **B3 · Lectura, accesibilidad y acceso** | [Ficha de seis secciones](docs/entregable-3.md), [investigación 1](investigacion/1-user-persona.md) y [estudio de accesibilidad B3](investigacion/B3.md), [prompts B3](prompts/B3.md) | Contraste WCAG implementado y validado por CI sobre V3; investigación 1 sintetizada con páginas de la fuente primaria. La auditoría de navegador sigue siendo complementaria. |
 
-**No se modificaron** los archivos de la aplicación, las pantallas, los colores, las gráficas, la base, el modelo, las pruebas ni los workflows. Estos archivos adicionales únicamente organizan evidencia comprobable.
+**El código de `main` conserva intacta la app histórica B1–B2.** La V3 tiene las preguntas de gráficas, la mejora de menú y el control automático WCAG en su propia rama. Los cambios documentales y el workflow de verificación añadidos en `main` no alteran las decisiones ni el modelo.
 
 
 
