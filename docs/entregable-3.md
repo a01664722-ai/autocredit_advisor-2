@@ -1,4 +1,4 @@
-https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/45741820563
+https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/45742128624
 
 # Entregable 3 · Evidencia de la versión XGBoost V3
 
