@@ -21,7 +21,7 @@ STYLE="""
 .ac-month-tag {font-size:.78rem;font-weight:750;color:#69e0aa;letter-spacing:.12em}
 .ac-month-title {font-size:1.8rem;font-weight:790;line-height:1.25;color:#f3faf5;letter-spacing:-.035em}
 .ac-month-sub {font-size:.87rem;color:#a9bcb0;line-height:1.5;margin-top:.35rem}
-.ac-month-card {height:172px;min-height:172px;overflow:hidden;box-sizing:border-box;
+.ac-month-card {height:auto;min-height:198px;overflow:visible;box-sizing:border-box;
   border-radius:15px;padding:15px 16px 13px;border:1px solid rgba(132,166,148,.24);
   background:linear-gradient(125deg,var(--ac-bg),rgba(15,24,20,.82) 77%);
   box-shadow:0 7px 22px rgba(0,0,0,.13);position:relative;margin-bottom:12px}
@@ -41,7 +41,7 @@ STYLE="""
 .ac-profile-name {font-weight:710;font-size:1rem;color:#eff6ef}
 .ac-profile-sub {font-size:.8rem;color:#afc4b4}
 @media(max-width:900px){.ac-month-title{font-size:1.4rem}.ac-month-card{padding:12px;
-  height:180px;min-height:180px}.ac-month-card .reading{font-size:1.35rem}}
+  height:auto;min-height:200px}.ac-month-card .reading{font-size:1.35rem}}
 </style>
 """
 
@@ -55,7 +55,7 @@ def _head(title, subtitle, tag):
         unsafe_allow_html=True)
 
 
-def _metric_card(spec, value, goal, note=""):
+def _metric_card(spec, value, goal, note="", assigned=None):
     key,title,kind,default,desc=spec
     status=level(value,goal)
     advance=progress(value,goal)
@@ -63,18 +63,22 @@ def _metric_card(spec, value, goal, note=""):
     reached=0 if advance is None else min(advance,1.0)*100
     color=COLOR[status]
     bg=BG[status]
+    shown=(f"{int(value):,} / {assigned:,}"
+           if key=="Decisiones mensuales" and assigned is not None else fmt(key,value))
+    caption=("Meta gerencial mensual de atendidas: " if assigned is not None
+             and key=="Decisiones mensuales" else "Meta gerencial*: ")
     return (
         f'<div class="ac-month-card" style="--ac-color:{color};--ac-bg:{bg}">'
         f'<div class="label">{html.escape(title)}</div>'
-        f'<div class="reading">{html.escape(fmt(key,value))}</div>'
-        f'<div class="goal">Meta gerencial*: {html.escape(fmt(key,goal))}</div>'
+        f'<div class="reading">{html.escape(shown)}</div>'
+        f'<div class="goal">{caption}{html.escape(fmt(key,goal))}</div>'
         f'<div class="track"><div class="fill" style="width:{reached:.2f}%"></div></div>'
         f'<div class="detail">{html.escape(progress_text if not note else note+" · "+progress_text)}</div>'
         '</div>'
     )
 
 
-def _risk_primary_card(spec, value, targets):
+def _risk_primary_card(spec, value, targets, assigned=None):
     """Las dos señales de exposición/PD NO tienen cuota ni color de cumplimiento.
 
     Para alto riesgo atendido y decisiones sí conservamos la meta gerencial de
@@ -83,7 +87,7 @@ def _risk_primary_card(spec, value, targets):
     key, label, kind, description = spec
     if key in KPI_MAP:
         goal = _goal_value(targets, key)
-        return _metric_card(KPI_MAP[key], value, goal)
+        return _metric_card(KPI_MAP[key], value, goal, assigned=assigned)
     return (
         '<div class="ac-month-card" style="--ac-color:#56dca0;--ac-bg:rgba(38,49,43,.2)">'
         f'<div class="label">{html.escape(label)}</div>'
@@ -102,14 +106,15 @@ def format_kpi_chart(fig,height=340):
     if legend is None:
         legend=len(fig.data)>1 or has_pie
     fig.update_layout(
-        height=max(height,390) if legend else max(height,345),
-        margin=dict(l=35,r=25,t=65,b=115 if legend else 60),
+        height=max(height,445) if legend else max(height,345),
+        margin=dict(l=35,r=25,t=65,b=145 if legend else 60),
         paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#dceae1",size=12),
         title_font=dict(size=16,color="#eff8f2"),
         showlegend=legend,
-        legend=dict(orientation="h",yanchor="top",y=-0.36,
-                    xanchor="center",x=0.5,font=dict(size=11),
+        legend=dict(orientation="h",yanchor="top",y=-0.34,
+                    xanchor="left",x=0,font=dict(size=11),
+                    entrywidthmode="fraction",entrywidth=0.49,
                     bgcolor="rgba(0,0,0,0)"),
         xaxis=dict(gridcolor="rgba(145,169,151,.10)",zeroline=False,
                    automargin=True,title_standoff=10),
@@ -140,19 +145,21 @@ def render_analyst_month(name,analyst_id,score_df):
           f"{name} · {stats['period'].capitalize()} · tres señales de riesgo y una de productividad*",
           "AUTOCREDIT / SEGUIMIENTO MENSUAL")
 
-    # El primer KPI es financiero y los tres primeros son de riesgo.
+    # El primer KPI contrasta retrospectivamente recomendaciones de rechazo
+    # con DEFAULT en TEST; no se usa para calificar personas.
     st.markdown("### Riesgo crediticio · tres KPI de riesgo y uno de productividad")
     primary_cols = st.columns(4, gap="small")
     for col, spec in zip(primary_cols, RISK_HEADLINES):
         key = spec[0]
         with col:
-            st.markdown(_risk_primary_card(spec, stats["metrics"][key], targets),
+            st.markdown(_risk_primary_card(spec, stats["metrics"][key], targets,
+                                            assigned=stats["assigned"]),
                         unsafe_allow_html=True)
-    st.caption("Exposición = monto de préstamos con sugerencia Rechazar que tuvieron una decisión "
-               "registrada este mes (u.m.); NO es pérdida evitada ni pérdida esperada. "
-               "PD = probabilidad estimada por XGBoost, NO incumplimiento observado. "
-               "Las cifras provienen de la misma bitácora SQLite y los Loan ID de TEST "
-               "que utiliza la bandeja; los perfiles y asignaciones son demostrativos.")
+    st.caption("Rechazos con default (TEST) = casos con DEFAULT = 1 / casos con sugerencia "
+               "Rechazar entre las decisiones del mes; es retrospectivo, no incumplimiento "
+               "posterior a un rechazo. La PD es predicha, no realizada. Productividad = "
+               "atendidas del mes / asignadas TEST; la meta editable de Mariana se refiere "
+               "a las atenciones mensuales, no al total TEST.")
 
     with st.expander("Ver indicadores complementarios y volumen de la bandeja", expanded=False):
         info1,info2,info3=st.columns(3,gap="small")
@@ -272,9 +279,10 @@ def render_manager_month(manager, score_df=None):
 
     if st.session_state.pop("target_save_notice",False):
         st.success("Metas guardadas. Se enviaron notificaciones a los analistas.")
-    st.caption("Las cuatro cifras principales son idénticas a las de Bandeja y Mis indicadores. "
-               "Exposición y PD media son señales informativas de riesgo, sin metas que incentiven aumentarlas. "
-               "Los casos de alto riesgo y las decisiones sí usan las metas mensuales compartidas.")
+    st.caption("Los cuatro KPI se calculan desde la misma fuente de Bandeja y Mis indicadores. "
+               "La tasa de rechazo con DEFAULT de TEST es retrospectiva y no califica analistas. "
+               "La PD es estimada. Las metas compartidas controlan casos de alto riesgo "
+               "y atenciones mensuales; la productividad muestra atendidas / asignadas TEST.")
 
     cols=st.columns(2,gap="medium")
     for column,(person,aid,initials) in zip(cols,ANALYSTS):
@@ -287,19 +295,21 @@ def render_manager_month(manager, score_df=None):
                     f'<div class="ac-profile-sub">Analista {aid} · perfil de prueba*</div></div></div>',
                     unsafe_allow_html=True)
                 cols_top=st.columns(2,gap="small")
-                cols_top[0].metric("Exposición alto riesgo · u.m.",
-                                   fmt_risk("Exposición alto riesgo evaluada",
-                                            stats["metrics"]["Exposición alto riesgo evaluada"]))
+                cols_top[0].metric("Rechazos con default (TEST)",
+                                   fmt_risk("Rechazos con incumplimiento TEST",
+                                            stats["metrics"]["Rechazos con incumplimiento TEST"]),
+                                   help="DEFAULT = 1 / sugerencias Rechazar atendidas este mes. Validación retrospectiva TEST.")
                 cols_top[1].metric("Casos alto riesgo",
                                    f'{stats["metrics"]["Riesgo alto atendido"]:,}')
                 cols_bottom=st.columns(2,gap="small")
                 cols_bottom[0].metric("PD promedio revisada",
                                       fmt_risk("PD promedio evaluada",
                                                stats["metrics"]["PD promedio evaluada"]))
-                cols_bottom[1].metric("Decisiones del mes",
-                                      f'{stats["count"]:,}')
-                st.caption("Exposición = monto evaluado, no pérdida. "
-                           "PD = probabilidad predicha, no default observado.")
+                cols_bottom[1].metric("Atendidas / asignadas TEST",
+                                      f'{stats["count"]:,} / {stats["assigned"]:,}' if stats["assigned"] is not None else "—",
+                                      help="Atendidas este mes; la meta de casos es editable por Mariana.")
+                st.caption("DEFAULT de TEST: retrospectivo, no posterior al rechazo. "
+                           "PD estimada por el modelo; sin calificar al analista.")
 
     st.markdown("### Comparar desempeño por indicador")
     keys=[x[0] for x in RISK_HEADLINES]+[
@@ -330,7 +340,7 @@ def render_manager_month(manager, score_df=None):
     ranked=pd.DataFrame(ranks).sort_values("_sort",ascending=False)
     st.dataframe(ranked.drop(columns="_sort"),hide_index=True,use_container_width=True)
     fig=go.Figure()
-    is_rate = (selected == "PD promedio evaluada" or
+    is_rate = (selected in ("PD promedio evaluada", "Rechazos con incumplimiento TEST") or
                (selected in KPI_MAP and KPI_MAP[selected][2]=="rate"))
     mult=100 if is_rate else 1
     for person,aid,_ in ANALYSTS:
@@ -354,9 +364,9 @@ def render_manager_month(manager, score_df=None):
     _chart(fig,390)
 
     st.markdown("### Metas que controla gerencia")
-    st.caption("Las metas editables son operativas y se conservan para ambos analistas. "
-               "La exposición de alto riesgo y la PD promedio son indicadores informativos: "
-               "no tienen metas artificiales, no miden pérdidas realizadas y no premian más riesgo.")
+    st.caption("Las metas editables son operativas y afectan a ambos analistas. "
+               "La proporción de rechazos sugeridos con DEFAULT = 1 en TEST y la PD "
+               "son informativas, sin meta que premie más riesgo.")
 
     changes={}
     with st.form("monthly_goals_form"):
