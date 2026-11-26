@@ -1,7 +1,7 @@
 """Pruebas integradas: riesgo de crédito en P1, analistas y gerencia.
 
-No usa DEFAULT real para evaluar a los analistas; el importe es exposición
-revisada, no pérdidas realizadas ni créditos incumplidos.
+El primer KPI usa DEFAULT de TEST para validar recomendaciones de rechazo
+retrospectivamente, NO como incumplimiento posterior ni evaluación del personal.
 """
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -58,19 +58,23 @@ def rows():
 def test_risk_kpi_are_three_risk_and_one_productivity(rows, scored):
     names = [item[0] for item in RISK_HEADLINES]
     assert names == [
-        "Exposición alto riesgo evaluada",
+        "Rechazos con incumplimiento TEST",
         "Riesgo alto atendido",
         "PD promedio evaluada",
         "Decisiones mensuales",
     ]
     stat = monthly_summary(rows, "A-017", REF, scored)
     assert stat["metrics"]["Exposición alto riesgo evaluada"] == pytest.approx(50000.0)
+    assert stat["metrics"]["Rechazos con incumplimiento TEST"] == pytest.approx(1/2)
+    assert (stat["reject_default_n"], stat["reject_valid_n"]) == (1, 2)
+    assert stat["assigned"] == 4
     assert stat["metrics"]["Riesgo alto atendido"] == 2
     assert stat["metrics"]["PD promedio evaluada"] == pytest.approx((.51 + .20 + .03) / 3)
     assert stat["metrics"]["Decisiones mensuales"] == 3
     # La aprobación excepcional no borra la sugerencia de alto riesgo.
     assert stat["overrides"] == 1
     assert fmt_risk("Exposición alto riesgo evaluada", 50000) == "50,000 u.m."
+    assert fmt_risk("Rechazos con incumplimiento TEST", 0.5) == "50.0%"
     assert fmt_risk("PD promedio evaluada", .2466666) == "24.7%"
 
 
@@ -88,10 +92,17 @@ def test_manager_and_analysts_share_exact_same_source(rows, scored):
         b["metrics"]["Exposición alto riesgo evaluada"])
     assert team["risk_pd"] == pytest.approx((.51 + .20 + .03 + .60 + .14) / 5)
     assert team["decisions"] == 5
+    assert team["assigned"] == 6
+    assert team["risk_rejection_n"] == 1
+    assert team["risk_rejection_total"] == 3
+    assert team["risk_rejection_rate"] == pytest.approx(1/3)
+    assert team["risk_rejection_rate"] == pytest.approx(
+        (a["reject_default_n"] + b["reject_default_n"]) /
+        (a["reject_valid_n"] + b["reject_valid_n"]))
     assert a["count"] == 3 and b["count"] == 2
 
 
-def test_risk_not_measured_from_realized_default(rows, scored):
+def test_historical_rejection_rate_changes_with_test_default_without_changing_other_kpis(rows, scored):
     first = build_team_metrics(rows, {"Decisiones mensuales": 50}, REF, scores=scored)
     inverted = scored.copy()
     inverted["DEFAULT"] = 1 - inverted["DEFAULT"]
@@ -99,17 +110,22 @@ def test_risk_not_measured_from_realized_default(rows, scored):
     assert first["risk_exposure"] == second["risk_exposure"]
     assert first["risk_high"] == second["risk_high"]
     assert first["risk_pd"] == second["risk_pd"]
+    assert first["risk_rejection_rate"] == pytest.approx(1/3)
+    assert second["risk_rejection_rate"] == pytest.approx(2/3)
 
 
 def test_missing_or_foreign_amount_never_counted_as_zero(rows, scored):
     missing = scored.loc[scored.LOAN_ID != "102"]
     s = monthly_summary(rows, "A-017", REF, scored=missing)
     assert s["metrics"]["Exposición alto riesgo evaluada"] is None
+    assert s["metrics"]["Rechazos con incumplimiento TEST"] is None
     changed = scored.copy()
     changed.loc[changed.LOAN_ID == "102", "ANALISTA_ID"] = "A-022"
     assert monthly_summary(rows, "A-017", REF, changed)["metrics"]["Exposición alto riesgo evaluada"] is None
+    assert monthly_summary(rows, "A-017", REF, changed)["metrics"]["Rechazos con incumplimiento TEST"] is None
     assert monthly_summary([], "A-017", REF, scored)["metrics"]["Exposición alto riesgo evaluada"] == 0.0
     assert monthly_summary([], "A-017", REF, scored)["metrics"]["PD promedio evaluada"] is None
+    assert monthly_summary([], "A-017", REF, scored)["metrics"]["Rechazos con incumplimiento TEST"] is None
 
 
 def test_updated_decisions_not_double_counted_and_manager_targets_notify(tmp_path, monkeypatch):
@@ -123,6 +139,8 @@ def test_updated_decisions_not_double_counted_and_manager_targets_notify(tmp_pat
     assert a["count"] == 1
     assert a["metrics"]["Exposición alto riesgo evaluada"] == 20000.0
     assert a["metrics"]["PD promedio evaluada"] == pytest.approx(.51)
+    assert a["metrics"]["Rechazos con incumplimiento TEST"] == pytest.approx(1.0)
+    assert a["assigned"] == 1
     assert store.set_targets_batch({"Riesgo alto atendido": 21, "Decisiones mensuales": 60},
                                    "Mariana")
     assert store.targets()["Riesgo alto atendido"] == 21
@@ -144,4 +162,9 @@ def test_actual_ui_calls_share_same_scored_and_neon_border():
     assert "render_manager_overview(M.scores)" in app
     assert "team=build_team_metrics(store.decisions(),targets,scores=scores)" in manager
     assert "outline:2px solid #52dc9a!important" in app
-    assert "Exposición de alto riesgo · u.m." in app
+    assert "Rechazos con default (TEST)" in app
+    assert "Atendidas / asignadas TEST" in app
+    assert "Atendidas / asignadas TEST" in analyst
+    assert "Atendidas / asignadas TEST" in manager
+    assert "goal_decisions=float(targets.get(\"Decisiones mensuales\",50))" in manager
+    assert "y=[goal_decisions/month_days,goal_decisions]" in manager
