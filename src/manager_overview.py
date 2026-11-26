@@ -277,7 +277,8 @@ def render_manager_overview(scores=None):
             if has_goal:
                 fig.add_hline(y=goal*mult,line_dash="dash",line_color=GOAL_COLOR,
                               annotation_text="Meta de gerencia")
-            fig.update_layout(title="¿Qué valor tiene el indicador elegido por analista?",
+            fig.update_layout(title=("¿Qué tan cerca está cada analista de su meta individual?"
+                                     if has_goal else "¿Qué valor tiene el indicador elegido por analista?"),
                        showlegend=True,
                        yaxis_title=("Porcentaje (%)" if metric_type=="rate" else
                                     "Importe (u.m.)" if metric_type=="amount" else "Casos"))
