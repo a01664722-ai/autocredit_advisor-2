@@ -54,6 +54,12 @@ La app ofrece cuentas de demostración para analistas (Adrián y Sofía), gerenc
 
 La base no incluye un identificador de crédito ni fechas de solicitudes. Esos campos se señalan como simulados. La tasa de incumplimiento y el DTI promedio se calculan a partir de la fuente real.
 
+## Última corrección · KPI de riesgo crediticio
+
+El primer indicador de Adrián/Sofía y de Mariana ahora es **exposición de alto riesgo evaluada (u.m.)**, seguido de **casos de alto riesgo atendidos**, **PD promedio evaluada** y **decisiones del mes**. Se calculan desde la misma bitácora de decisiones y los Loan ID de TEST; **no son incumplimientos observados ni pérdidas evitadas**. Las metas de gerencia permanecen compartidas, y los demás indicadores se conservan como complementarios.
+
+[**Definición, fórmulas, conexión entre pantallas y seis pruebas de integración**](docs/kpis-riesgo-integracion.md) · [**Código funcional de V3**](https://github.com/a01664722-ai/autocredit_advisor-2/tree/v3-integracion-xgboost-12v) · [**PR #7 con cambios y pruebas**](https://github.com/a01664722-ai/autocredit_advisor-2/pull/7).
+
 ## Seguimiento de la retroalimentación M4C · Bloques 1–3 (documentación)
 
 | Bloque | Evidencia ordenada | Estado relevante |
