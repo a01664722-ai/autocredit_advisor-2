@@ -59,9 +59,8 @@ La base no incluye un identificador de crédito ni fechas de solicitudes. Esos c
 | Bloque | Evidencia ordenada | Estado relevante |
 |---|---|---|
 | **B1 · Plan / Design** | [Contrato del prompt](contrato-prompt.md), [registro de prompts B1](prompts/B1.md), [observaciones del profesor](docs/entregable-1.md) | La URL y app funcionaban; se recuperó la documentación con límites históricos explícitos. |
-| **B2 · Build / Test** | [Investigación Anthropic](investigacion/claude.md), [datos](contrato-datos.md), [prompts B2](prompts/B2.md), [cierre B2](docs/entregable-2.md) | El profesor acreditó las partes 1 y 2; falta unificar el historial del repo B1 antiguo. |
+| **B2 · Build / Test** | [Investigación Anthropic](investigacion/claude.md), [contrato de datos](contrato-datos.md), [prompts B2](prompts/B2.md), [evidencia B2](docs/entregable-2.md) | Investigación, contrato de datos, validaciones, pruebas y CI reunidos en este repositorio. |
 | **B3 · Deploy / accesibilidad** | [Ficha de seis secciones](docs/entregable-3.md), [investigación visual](investigacion/visual-jerarquia.md), [prompts B3](prompts/B3.md) | **Contraste en CI aún no implementado**, y falta la investigación 1 original; no se declara cumplimiento total. |
 
 **No se modificaron** los archivos de la aplicación, las pantallas, los colores, las gráficas, la base, el modelo, las pruebas ni los workflows. Estos archivos adicionales únicamente organizan evidencia comprobable.
 
-**Continuidad Git:** la retroalimentación del profesor identifica dos repositorios de origen sin ancestro común. Queda pendiente el merge real de historias con resolución de conflictos; la sola documentación **no corrige** ese criterio. Repositorio definitivo: https://github.com/a01664722-ai/autocredit_advisor-2.

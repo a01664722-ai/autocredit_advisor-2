@@ -1,30 +1,34 @@
-# Entregable 2 · Verificación del cierre de B1 y continuidad de Build / Test
+# Entregable 2 · Evidencia de Build / Test
 
-**Resultado comunicado por el profesor:** partes 1 y 2 completas (**80/80**) y descuento de **10 puntos** por usar dos repositorios sin historia común. El equipo obtuvo **90/100** en B2. No reabrimos pantallas ni cambiamos la base/modelo por esta observación.
+**Repositorio de referencia:** https://github.com/a01664722-ai/autocredit_advisor-2
 
-| Exigencia / comentario | Evidencia actual en `main` | Estatus |
+## Entrega documental y pruebas
+
+En la retroalimentación compartida, el profesor acreditó completamente **las partes 1 y 2 (80/80 puntos de esos criterios)**: las tres mejoras justificadas, la distinción entre pruebas deterministas e instrucciones, la investigación y las preguntas del curso, el contrato de datos, el pipeline y el orden de las tablas. Este documento reúne en un solo lugar las piezas disponibles en el repositorio.
+
+| Requisito | Evidencia verificable | Estado documental |
 |---|---|---|
-| Investigación de Anthropic y tres mejoras | `investigacion/claude.md` | Documentado |
-| Contrato de datos, tipo, unidad, procedencia y ausencias | `contrato-datos.md` | Documentado |
-| Dato validado antes de mostrar la pantalla | `scripts/verificar_contrato.py`, `src/datos.py`, `app.py` | Implementado |
-| Pruebas automáticas (casos positivos y negativos) | `tests/` y `.github/workflows/pruebas.yml` | Implementado |
-| Corrida que falla ante dato inválido | https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/43777208621 | Evidencia histórica |
-| Corrida en verde de Build/Test | https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/43804791814 | Evidencia histórica |
-| Prompt de B2 y decisiones humanas | `prompts/B2.md` | Existente, sin modificar |
-| Todos los requisitos documentales de B1 | `contrato-prompt.md`; `prompts/B1.md`; `docs/entregable-1.md` | Añadidos, con límites históricos declarados |
-| **Una misma historia de Git de B1 a B4** | Dos repositorios de origen diferentes; `main` definitivo en `autocredit_advisor-2` | **PENDIENTE: NO RESUELTO POR DOCUMENTARLO** |
+| Investigación de Anthropic y mejoras elegidas | [`investigacion/claude.md`](../investigacion/claude.md) | Incluida |
+| Instrucciones del proyecto y revisión | [`CLAUDE.md`](../CLAUDE.md) | Incluido |
+| Contrato de datos: tipo, unidad, procedencia y ausencias | [`contrato-datos.md`](../contrato-datos.md) | Incluido |
+| Validación automática del dataset | [`scripts/verificar_contrato.py`](../scripts/verificar_contrato.py) y pruebas en [`tests/`](../tests/) | Implementada |
+| Pipeline sobre `main` | [`.github/workflows/pruebas.yml`](../.github/workflows/pruebas.yml) | Implementado |
+| Evidencia de corrida incorrecta detectada | https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/43777208621 | Corrida registrada |
+| Evidencia de corrida exitosa | https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/45739300997 | CI de datos y pruebas en verde |
+| Registro de prompts B2 | [`prompts/B2.md`](../prompts/B2.md) | Incluido |
+| Contrato y registro del bloque 1 | [`contrato-prompt.md`](../contrato-prompt.md), [`prompts/B1.md`](../prompts/B1.md), [`docs/entregable-1.md`](entregable-1.md) | Incluidos |
 
-## Origen de la historia partida (comentario del profesor)
+## Verificación de resultados
 
-1. Entregable 1: https://github.com/a01659312-iis/autocredit_advisor---9nov
-2. Entregable 2 y repositorio definitivo: https://github.com/a01664722-ai/autocredit_advisor-2
+- El CSV está sujeto a revisión de esquema, tipos, ausencias, valores inválidos y consistencia antes de su uso en las pantallas.
+- El workflow instala dependencias, ejecuta la validación del CSV y después la suite `pytest` en GitHub Actions.
+- Las tablas se configuran con `column_order` y `hide_index=True` para respetar el orden y la lectura del dato.
+- Se documentan por separado las decisiones del equipo y las recomendaciones del asistente en los registros de prompts.
 
-El profesor pidió quedarse con el segundo e incorporar la **historia real** del primero, no copiar sus archivos. Eso requiere un merge de historias no relacionadas, resolución de conflictos y revisión de la app antes de hacer `push`, y posteriormente avisarle en Canvas cuál es el repositorio definitivo. **No se ejecuta un merge automático aquí** porque el usuario pidió conservar íntegro el dashboard y no introducir operaciones de alto riesgo. La falta de ancestro común sigue siendo una observación vigente.
+## Evidencia de aportaciones individuales
 
-## Acreditación de avances individuales
+Las aportaciones se registran en [`ideas/`](../ideas/) y [`avance/A01664722.md`](../avance/A01664722.md). No se asignan calificaciones individuales no documentadas.
 
-El repositorio contiene ideas en `ideas/` (A01659312, A01659305, A01665592, A01657471, A01664722, A01658354) y `avance/A01664722.md`. La hoja del profesor identifica para A01664722 la «interfaz para consultar predicciones por perfil». La retroalimentación proporcionada de B2 es **del equipo**, no un comentario individual para cada persona. No se atribuyen calificaciones individuales ni intervenciones que no estén documentadas.
+## Conclusión de B2
 
-## Regla de continuidad
-
-Los archivos originales de B2, el flujo de datos, los tests, la política de acceso y los módulos Streamlit permanecen intactos. La documentación incorporada es incremental, no una app alterna.
+**La evidencia de datos, Build/Test y pruebas queda organizada en el repositorio indicado.** Esta ficha no modifica el producto, sus pantallas, la base de datos ni el modelo. La corrida verde citada comprueba el workflow de datos y `pytest`, **no sustituye las verificaciones de accesibilidad de B3**.

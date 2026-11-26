@@ -13,7 +13,7 @@
 | Contrato del prompt personalizado, literal y cambios | `contrato-prompt.md`: pantallas, salida, texto original disponible, resultado verificable, cambios y autoría. **Literal histórico no completo:** se declara en vez de inventarlo. |
 | Objetivo de negocio: decisión, línea base y meta | Adrián: aprobar, condicionar o rechazar; meta ≤ 5 minutos. **14 min / 20 casos** fue sugerencia del profesor, no medición documentada: **línea base empírica pendiente**. |
 | Registro de prompts sin campos mudos y con revisión humana | `prompts/B1.md`: formato requerido, decisiones humanas, archivo y commit. Los prompts/respuestas no preservados se identifican como tales. |
-| Un repositorio y continuidad de los cuatro bloques | `autocredit_advisor-2` es el repositorio definitivo. La unificación histórica real del repositorio B1 original **no está resuelta**; ver `docs/entregable-2.md`. |
+| Repositorio público del equipo y aplicación desplegada | [Repositorio de AutoCredit Advisor](https://github.com/a01664722-ai/autocredit_advisor-2) con la URL de Streamlit en la primera línea del `README.md`. |
 
 ## O-1 — exposición del 21 de octubre · bifurcación de error
 
@@ -35,4 +35,4 @@
 - Preguntas de gráficas y alcance por perfil: `docs/entregable-3.md`.
 - Registro de revisión individual: consultar `ideas/` y `avance/`.
 
-**No se reescribe historia Git ni se declara recuperado un prompt original que no está disponible.**
+**Documentación del prompt:** el contrato presenta una versión consolidada para revisar y auditar el código; el campo histórico literal que no está respaldado se declara pendiente, sin atribuir a la IA decisiones del equipo.
