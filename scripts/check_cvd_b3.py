@@ -83,7 +83,7 @@ def check_palette():
     if set(SIGNS)!=set(LABELS) or len(set(SIGNS.values()))!=3:
         errors.append("Faltan simbolos y etiquetas no cromaticas para tres decisiones")
     app=(Path(__file__).resolve().parents[1]/"app_v3.py").read_text(encoding="utf-8")
-    for fragment in ('vista['SUGERENCIA'].map(decision_label)',
+    for fragment in ("vista['SUGERENCIA'].map(decision_label)",
                      'decision_label(r.SUGERENCIA)',
                      'riesgo_visible', 'preference_controls("login")',
                      'preference_controls("sidebar")'):
