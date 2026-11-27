@@ -83,4 +83,4 @@ def test_main_workflow_never_checks_out_other_branch():
     assert "branches:" in workflow
     assert "- main" in workflow
     assert "ref: v3-integracion-xgboost-12v" not in workflow
-    assert "python scripts/check_cvd_b3.py" in workflow
+    assert "python -m scripts.check_cvd_b3" in workflow
