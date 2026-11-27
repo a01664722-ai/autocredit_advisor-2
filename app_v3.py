@@ -25,6 +25,10 @@ from src.access_audit import render_access_audit
 from src.dti_views import render_analyst_dti_sidebar
 from src.support_views import render_support_home, render_support_validation, REPOSITORY_URL
 from src.ops_monitor import begin_session, touch_session, end_session
+from src.accessibility_theme import (
+    preference_controls, show_theme, visual_preferences, decision_label,
+    CVD_DARK, CVD_LIGHT, render_accessible_chart,
+)
 
 st.set_page_config(page_title='AutoCredit Advisor | Equipo 3', page_icon=':material/finance:', layout='wide')
 st.markdown('''<style>
@@ -86,6 +90,8 @@ METRICAS_OBJ={'Resueltas':'Casos resueltos','Con justificación':'Excepciones ju
 # Este flujo no autentica identidades; es solo navegación por roles académicos.
 selected_profile = demo_current_profile(st.session_state, PERSONAS)
 if selected_profile is None:
+    preference_controls("login")
+    show_theme()
     render_login(PERSONAS)
     st.stop()
 
@@ -198,6 +204,7 @@ def ask_decision(row,decision):
 
 with st.sidebar:
     st.markdown('### AutoCredit Advisor')
+    preference_controls("sidebar")
     # El rol se elige únicamente en la pantalla de acceso, no en la barra lateral.
     role,analyst_id,name=PERSONAS[selected_profile]
     # No reutilizar Loan ID, filtros ni decisiones pendientes de otro perfil.
@@ -252,6 +259,8 @@ with st.sidebar:
         st.rerun()
 
 page=st.session_state.page
+# Aplicar el mismo tema a la pagina, a la barra lateral y al HTML de cada perfil.
+show_theme()
 
 if page=='Mensajes':
     render_messages(role,analyst_id,name)
@@ -358,6 +367,11 @@ if page == 'Bandeja':
     avance_mes = decisiones_mes / meta_mensual
     semaforo_mes = level(decisiones_mes, meta_mensual)
     semaforo_alto = level(casos_alto, meta_alto)
+    estado_kpi = {"met":"Meta lograda", "mid":"En progreso",
+                  "low":"Por debajo de 50% de la meta", "na":"Sin base evaluable"}
+    texto_prioridad = estado_kpi[semaforo_prioridad]
+    texto_alto = estado_kpi[semaforo_alto]
+    texto_mes = estado_kpi[semaforo_mes]
     detalle_riesgo = (f"{casos_alto:,} de {decisiones_mes:,} atendidas con riesgo alto · "
                       "meta porcentual editable por gerencia"
                       if decisiones_mes else
@@ -372,16 +386,16 @@ if page == 'Bandeja':
     <div class="ac-p1-kpis">
       <div class="ac-p1-kpi {semaforo_prioridad}"><div class="name">Atención prioritaria de riesgo alto</div>
         <div class="number">{prioridad_texto} / {meta_prioridad_texto}</div>
-        <div class="detail">{detalle_riesgo} · no exige rechazar*</div></div>
+        <div class="detail">{texto_prioridad} · {detalle_riesgo} · no exige rechazar*</div></div>
       <div class="ac-p1-kpi {semaforo_alto}"><div class="name">Casos de alto riesgo atendidos</div>
         <div class="number">{casos_alto:,} / {int(meta_alto):,}</div>
-        <div class="detail">XGBoost sugirió Rechazar · meta mensual gerencia*</div></div>
+        <div class="detail">{texto_alto} · XGBoost sugirió Rechazar · meta mensual gerencia*</div></div>
       <div class="ac-p1-kpi amber"><div class="name">PD promedio evaluada</div>
         <div class="number">{pd_media}</div>
         <div class="detail">Promedio de PD XGBoost de las decisiones del mes · no es default observado</div></div>
       <div class="ac-p1-kpi {semaforo_mes}"><div class="name">Atendidas vs meta</div>
         <div class="number">{decisiones_mes:,} / {int(meta_mensual):,}</div>
-        <div class="detail">Meta mensual establecida por gerencia · {avance_mes:.0%} de avance</div></div>
+        <div class="detail">{texto_mes} · Meta mensual establecida por gerencia · {avance_mes:.0%} de avance</div></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -507,7 +521,7 @@ if page == 'Bandeja':
     tabla = pd.DataFrame({
         'Loan ID': vista['LOAN_ID'].astype(str).to_numpy(),
         'Decisión rápida': ['Seleccionar'] * len(vista),
-        'Sugerencia': vista['SUGERENCIA'].to_numpy(),
+        'Sugerencia': vista['SUGERENCIA'].map(decision_label).to_numpy(),
         'XGBoost': np.where(vista['PRED_XGB'].eq(1), 'Default (1)', 'No default (0)'),
         'PD XGB': vista['PD_XGB'].map(lambda x: f'{x:.1%}').to_numpy(),
         'PD Logit': vista['PD_LOGIT'].map(lambda x: f'{x:.1%}').to_numpy(),
@@ -517,12 +531,30 @@ if page == 'Bandeja':
     })
 
     def _color_fila(fila):
-        colores = {
-            'Aceptar': ('#82eac0', 'rgba(24,137,94,.14)'),
-            'Condicionar': ('#f4ce82', 'rgba(165,111,22,.14)'),
-            'Rechazar': ('#fb9fa7', 'rgba(169,45,66,.15)'),
-        }
-        fg, bg = colores[fila['Sugerencia']]
+        mode,cvd=visual_preferences()
+        if cvd:
+            blue,gold,magenta=CVD_LIGHT if mode=="Claro" else CVD_DARK
+            colores={
+                'Aceptar':(blue,'rgba(35,104,158,.12)'),
+                'Condicionar':(gold,'rgba(181,133,35,.14)'),
+                'Rechazar':(magenta,'rgba(178,78,132,.15)'),
+            }
+        elif mode=="Claro":
+            colores={
+                'Aceptar':('#17613b','#eefaf2'),
+                'Condicionar':('#754a00','#fff6e4'),
+                'Rechazar':('#8b2537','#fff0f1'),
+            }
+        else:
+            colores={
+                'Aceptar':('#82eac0','rgba(24,137,94,.14)'),
+                'Condicionar':('#f4ce82','rgba(165,111,22,.14)'),
+                'Rechazar':('#fb9fa7','rgba(169,45,66,.15)'),
+            }
+        # La columna visible agrega ✓/◇/✕; la decision real conserva
+        # su valor original en vista/SQLite.
+        decision=str(fila['Sugerencia']).split(' ',1)[-1]
+        fg,bg=colores[decision]
         resultado = [''] * len(fila)
         resultado[fila.index.get_loc('Sugerencia')] = (
             f'color:{fg};background-color:{bg};font-weight:730;'
@@ -540,7 +572,8 @@ if page == 'Bandeja':
       sin abrir otra pantalla. Si difiere, se abrirá la ficha con confirmación, motivo
       obligatorio y aviso a gerencia. <strong>Rojo</strong> = rechazar,
       <strong>ámbar</strong> = condicionar, <strong>verde</strong> = aceptar.
-      La PD Logit es solo una referencia.</div>''', unsafe_allow_html=True)
+      <strong>✓ Aceptar, ◇ Condicionar, ✕ Rechazar</strong> son señales independientes
+      del color; la PD Logit es solo una referencia.</div>''', unsafe_allow_html=True)
 
     editada = st.data_editor(
         tabla.style.apply(_color_fila, axis=1),
@@ -750,6 +783,8 @@ elif page=='Ficha de solicitud':
 
     dti_nivel = _nivel_relativo(float(r.DEBT_TO_INCOME), M.train.DEBT_TO_INCOME)
     riesgo_nivel = 'Alto' if r.SUGERENCIA == 'Rechazar' else 'Medio' if r.SUGERENCIA == 'Condicionar' else 'Bajo'
+    riesgo_visible = {'Alto':'✕ Alto','Medio':'◇ Medio','Bajo':'✓ Bajo'}[riesgo_nivel]
+    sugerencia_visible = decision_label(r.SUGERENCIA)
     tone = _card_tone(r.SUGERENCIA)
 
     st.markdown(f"""
@@ -757,7 +792,7 @@ elif page=='Ficha de solicitud':
       <div class="ac-p2-title">Análisis de la solicitud {html.escape(str(r.LOAN_ID))}</div>
       <div class="ac-p2-sub">
         <strong>Loan ID {html.escape(str(r.LOAN_ID))}</strong> · {html.escape(str(r.SEG_DTI))} ·
-        Sugerencia del modelo: <strong>{html.escape(str(r.SUGERENCIA))}</strong>
+        Sugerencia del modelo: <strong>{html.escape(sugerencia_visible)}</strong>
       </div>
     </div>
     """, unsafe_allow_html=True)
@@ -777,12 +812,12 @@ elif page=='Ficha de solicitud':
       </div>
       <div class="ac-p2-card {tone}">
         <div class="label">Decisión propuesta</div>
-        <div class="value">{html.escape(str(r.SUGERENCIA))}</div>
+        <div class="value">{html.escape(sugerencia_visible)}</div>
         <div class="sub">Según XGBoost y la política vigente</div>
       </div>
       <div class="ac-p2-card {'alert' if riesgo_nivel=='Alto' else 'warn' if riesgo_nivel=='Medio' else 'ok'}">
         <div class="label">Nivel de riesgo</div>
-        <div class="value">{riesgo_nivel}</div>
+        <div class="value">{riesgo_visible}</div>
         <div class="sub">Interpretación operativa del caso</div>
       </div>
       <div class="ac-p2-card {'alert' if dti_nivel=='Alto' else 'warn' if dti_nivel=='Medio' else 'ok'}">
@@ -895,7 +930,7 @@ elif page=='Ficha de solicitud':
             paper_bgcolor='rgba(0,0,0,0)',
             font_color='#e8f4ed'
         )
-        st.plotly_chart(fig, use_container_width=True)
+        render_accessible_chart(fig, use_container_width=True)
         st.caption(
             f'Zonas: aceptar bajo {M.corte_base:.2%} · condicionar entre {M.corte_base:.2%} y {r.CORTE:.2%} · rechazar sobre {r.CORTE:.2%}.'
         )
@@ -929,7 +964,7 @@ elif page=='Ficha de solicitud':
             margin=dict(t=10, l=18, r=18, b=15),
             showlegend=False
         )
-        st.plotly_chart(hist, use_container_width=True)
+        render_accessible_chart(hist, use_container_width=True)
         st.caption('Línea sólida: esta solicitud · línea verde: corte de aceptación · línea blanca: corte de rechazo.')
 
     # ========= Gráficas 2 =========
@@ -972,7 +1007,7 @@ elif page=='Ficha de solicitud':
             margin=dict(t=8, l=10, r=10, b=5),
             legend=dict(orientation='h', y=1.13)
         )
-        st.plotly_chart(comp, use_container_width=True)
+        render_accessible_chart(comp, use_container_width=True)
 
     with g4:
         st.subheader('¿Qué indicadores superan la mediana de buenos pagadores?')
@@ -1015,7 +1050,7 @@ elif page=='Ficha de solicitud':
             margin=dict(t=8, l=10, r=10, b=25),
             legend=dict(orientation='h', y=1.12)
         )
-        st.plotly_chart(perfil, use_container_width=True)
+        render_accessible_chart(perfil, use_container_width=True)
         st.caption('Valores por arriba de 100 indican que la solicitud está por encima de la mediana de buenos pagadores.')
 
     # ========= Gráficas 3 =========
@@ -1054,7 +1089,7 @@ elif page=='Ficha de solicitud':
             font_color='#eaf3ed',
             margin=dict(t=5, l=12, r=18, b=8)
         )
-        st.plotly_chart(fig_pct, use_container_width=True)
+        render_accessible_chart(fig_pct, use_container_width=True)
         st.caption('Percentiles altos en DTI, PTI, LTV o uso revolvente suelen reflejar mayor presión financiera.')
 
     with g6:
@@ -1199,13 +1234,13 @@ elif page=='Métricas del área':
             f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
             f.update_layout(title='¿Cómo cambian los casos condicionados y rechazados al mover el corte?',xaxis_title='Corte superior de PD (%)',yaxis_title='Porcentaje de solicitudes (%)',height=310,
                 margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
-            st.plotly_chart(f,use_container_width=True)
+            render_accessible_chart(f,use_container_width=True)
         with fc2:
             f=go.Figure(go.Scatter(x=thresholds*100,y=default_conditioned,mode='lines',line_color='#f08565',name='Default observado condicional'))
             f.add_vline(x=new*100,line_dash='dot',line_color='#f5c65b')
             f.update_layout(title='¿Qué incumplimiento se observó en la zona condicional de TEST?',xaxis_title='Corte superior de PD (%)',yaxis_title='Default histórico (%)',height=310,
                 margin=dict(l=15,r=15,t=50,b=18),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font_color='#eaf3ed')
-            st.plotly_chart(f,use_container_width=True)
+            render_accessible_chart(f,use_container_width=True)
         st.caption('Curvas calculadas con la variable DEFAULT de TEST, exclusivamente en agregado. Si el corte cambia después de ver TEST, debe evaluarse de nuevo en una muestra futura independiente antes de producción.')
         footnote()
     

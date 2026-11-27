@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from src.accessibility_theme import render_accessible_chart
 
 from src.monthly_kpis import KPI_SPECS, KPI_MAP, RISK_HEADLINES, RISK_MAP, monthly_summary, level, progress, fmt, fmt_risk
 from src import store
@@ -131,7 +132,7 @@ def format_kpi_chart(fig,height=340):
 
 def _chart(fig,height=340):
     format_kpi_chart(fig,height)
-    st.plotly_chart(fig,use_container_width=True,
+    render_accessible_chart(fig,use_container_width=True,
                     config={"displayModeBar":False,"responsive":True})
 
 

@@ -36,15 +36,41 @@ https://github.com/a01664722-ai/autocredit_advisor-2/actions/runs/45754353334
 
 Se conserva el cálculo y la geometría de cada gráfica; solo cambia el título por una pregunta. La tabla «Resumen visual de decisión» también tiene una pregunta, aunque no cuenta como gráfica.
 
-## 2. Paleta y contraste calculado
+## 2. Paleta inclusiva, protanopía/deuteranopía y contraste verificado
 
-WCAG 2.2 AA: **4.5:1** texto normal y **3:1** texto grande/elementos informativos. Ejemplos con la paleta original: KPI `#b8c5bd` sobre `#161b18` **9.77:1**; chip rojo `#f47b87` sobre `#4b2027` **5.23:1**; ámbar `#f5c65b` sobre `#423011` **7.89:1**; verde `#52dc9a` sobre `#103a2a` **7.26:1**. **No se cambiaron los colores**; el menú rápido reutiliza los existentes.
+**Corrección respecto al avance:** no basta con conservar el color original, y el tema claro de la versión anterior no resultaba legible. La V3 ahora ofrece **controles visibles desde la pantalla de acceso y también en la barra lateral de cada perfil**: **Oscuro / Claro** y **Modo daltónico · símbolos y paleta**. Son preferencias de presentación independientes de los datos y se mantienen al cambiar de perfil.
 
-Pipeline: `.github/workflows/check_dashboard.yml`, ejecuta `python scripts/check_contrast_b3.py` y `python -m pytest -q`. Si la combinación auditada no cumple, el CI falla. Ver [investigación 3](../investigacion/B3.md) para método y alcance; no se declara auditoría integral del DOM.
+**Señal no cromática obligatoria:** `✓ Aceptar`, `◇ Condicionar`, `✕ Rechazar` se muestran en la tabla de Bandeja, el resumen y la ficha sin cambiar las decisiones almacenadas. Alto/medio/bajo se acompañan de texto. Las metas incluyen estado escrito (meta lograda, en progreso, por debajo del 50%) además del color. En modo daltónico, las barras usan tramas y las líneas/series emplean trazos y marcadores diferentes. Así una persona puede reconocer la categoría aunque las tonalidades converjan.
 
-## 3. Jerarquía justificada con investigación 1
+**Método reproducible:** `scripts/check_cvd_b3.py` transforma RGB sRGB linealizado mediante las matrices de severidad 1.0 de Machado, Oliveira y Fernandes (2009). Para cada uno de **2 temas × 3 categorías × 3 escenarios** (visión habitual, protanopía y deuteranopía) calcula contraste relativo contra su fondo. La compuerta exige **mínimo 4.5:1** para los tonos usados en texto (criterio WCAG 2.2, 1.4.3); las marcas y patrones se evalúan como señales adicionales (1.4.1). Los resultados siguientes se obtuvieron con el mismo algoritmo; la acción CI vuelve a calcularlos:
 
-El estudio original del equipo *User Persona Riesgo Crediticio v2 (1).pdf*, pp. 4–5 y 15–17, explica que Adrián debe decidir un caso en menos de 5 minutos; Mariana necesita comparar segmentos y políticas. De ahí que P1 muestre KPIs, filtros y conteo antes de la tabla y P2 muestre PD y recomendación antes de comparaciones; la gerencia ve primero métricas y después simulador. [Síntesis y evidencia de la investigación 1](../investigacion/1-user-persona.md). La V3 añadió Sofía y Soporte; esta evolución se documenta.
+| Tema | Señal | Visión habitual | Protanopía | Deuteranopía | Umbral |
+|---|---|---:|---:|---:|---|
+| Oscuro | ✓ Aceptar · azul `#74D5FF` | 11.47:1 | 12.53:1 | 10.80:1 | ≥4.5 |
+| Oscuro | ◇ Condicionar · ámbar `#FFD166` | 13.14:1 | 12.25:1 | 13.74:1 | ≥4.5 |
+| Oscuro | ✕ Rechazar · rosa `#F7A3CF` | 10.01:1 | 9.15:1 | 10.64:1 | ≥4.5 |
+| Claro | ✓ Aceptar · azul `#005A8C` | 7.39:1 | 6.66:1 | 7.95:1 | ≥4.5 |
+| Claro | ◇ Condicionar · ámbar `#815000` | 6.82:1 | 7.59:1 | 6.41:1 | ≥4.5 |
+| Claro | ✕ Rechazar · violeta `#8E285C` | 8.05:1 | 9.73:1 | 7.22:1 | ≥4.5 |
+
+**Resultado de la simulación:** los 18 pares previstos superan 4.5:1, con mínimo **6.41:1**. Esto comprueba los **tokens** auditados, **no** certifica todos los píxeles del dashboard ni sustituye una inspección en navegador. La distinción sigue respaldada por palabras, símbolos y patrones, incluso cuando dos colores simulados se parecen.
+
+**Evidencia visual:** [muestras de las paletas simuladas (SVG)](evidencia-daltonismo.svg). **Código:** [control de accesibilidad](../src/accessibility_theme.py), [verificador de daltonismo](../scripts/check_cvd_b3.py), [verificador de contraste](../scripts/check_contrast_b3.py), [pruebas](../tests/test_accessibility_entrega4.py). Para ejecutar: `python -m scripts.check_cvd_b3`, `python scripts/check_contrast_b3.py` y `python -m pytest -q`.
+
+**Pipeline real:** `.github/workflows/check_dashboard.yml` se utiliza en V3. Para no dejar sin cobertura la rama que evalúa el profesor, `.github/workflows/contraste-v3.yml` en **main** debe ejecutar checkout del mismo commit de **main**, nunca fijar `ref: v3-integracion-xgboost-12v`. La sincronización de assets V3 a main debe preservarlos junto a los originales de B1/B2. Ver [seguimiento de Entrega 4](entregable-4.md).
+
+**Referencias:** Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F. (2009). *A physiologically-based model for simulation of color vision deficiency*. IEEE TVCG, 15(6), 1291–1298, https://doi.org/10.1109/TVCG.2009.113; W3C (2023), [WCAG 2.2](https://www.w3.org/TR/WCAG22/) y [Use of Color, criterio 1.4.1](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html).
+
+## 3. Jerarquía visual: investigación 1 del curso + user persona del equipo
+
+**Dos fuentes diferentes, no intercambiables:**
+
+1. **Investigación 1 del curso:** el material bibliográfico específico (título, autoría y enlace/página) **no está identificado ni adjunto al repositorio**. Para no inventar una referencia, queda señalado como **pendiente de incorporar la cita literal de la investigación 1 asignada por el profesor**. No se presenta el user persona como esa fuente ni se afirma que el criterio documental está plenamente cerrado sin ella.
+2. **Investigación del equipo (fuente independiente):** *User Persona Riesgo Crediticio v2 (1).pdf*, pp. 4–5 y 15–17 (Equipo 3, 2026); [síntesis documentada](../investigacion/1-user-persona.md). Explica que Adrián decide un caso en menos de cinco minutos, Mariana compara segmentos y políticas, y los flujos difieren por perfil.
+
+**Aplicación a la jerarquía:** P1 muestra señales de riesgo y productividad, filtros y conteo **antes** de la tabla para decidir qué solicitud revisar. P2 presenta PD, recomendación y nivel de riesgo **antes** de las comparaciones. Mariana ve primero panorama y cumplimiento del equipo y después el simulador. El flujo V3 incorpora a Sofía y Soporte sin atribuirlos a la investigación inicial.
+
+**Apoyo externo adicional, no presentado como investigación 1 del curso:** W3C, [Headings and Labels](https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html), explica el valor de encabezados descriptivos para orientar acciones. La aplicación mantiene las 24 preguntas de negocio previamente aceptadas.
 
 ## 4. Estado «nada seleccionado» y `st.stop()`
 
@@ -77,9 +103,7 @@ Ambos filtros realmente actualizan `filtrada`. La interfaz muestra **«N resulta
 
 ### Anexo · Última observación del profesor: riesgo crediticio por encima de productividad
 
-Se preservan **las seis secciones obligatorias anteriores** y sus evidencias. La última retroalimentación se atendió sin reentrenar el modelo ni modificar la política, con **tres KPI de riesgo y uno de productividad** que aparecen y se calculan igual en P1, Mis indicadores y gerencia: (1) exposición monetaria evaluada en casos de alto riesgo, (2) casos de alto riesgo atendidos, (3) PD promedio de las solicitudes revisadas y (4) decisiones del mes.
-
-Los dos indicadores de riesgo que aumentan con volumen/PD no se consideran metas de desempeño; son señales para gestionar exposición. El conteo de riesgo y productividad mantiene metas de gerencia, sincronizadas en SQLite. No se utiliza incumplimiento observado `DEFAULT` para puntuar analistas.
+Se preservan **las seis secciones obligatorias anteriores**. Los cuatro KPI sincronizados actualmente son: **(1) Atención prioritaria de riesgo alto / meta porcentual editable**, (2) casos de alto riesgo atendidos / meta, (3) PD promedio estimada (informativa) y (4) Atendidas vs meta mensual editable. Las cifras provienen de SQLite y se agregan correctamente en las dos vistas gerenciales sin reentrenar XGBoost. El resultado `DEFAULT` de TEST no se usa para calificar al personal.
 
 **Metodología, fórmulas, limitaciones, enlaces de código y pruebas:** [`docs/kpis-riesgo-integracion.md`](kpis-riesgo-integracion.md), y [`tests/test_risk_kpi_integration.py`](../tests/test_risk_kpi_integration.py).
 

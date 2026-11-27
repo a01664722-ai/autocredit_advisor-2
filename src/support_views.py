@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from src.accessibility_theme import render_accessible_chart
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import precision_recall_curve
 
@@ -107,7 +108,7 @@ def _plot(fig,height=380,legend=False,wide_left=False):
         yaxis=dict(gridcolor="rgba(155,177,158,.12)",automargin=True,
                    title_standoff=12,zeroline=False),
     )
-    st.plotly_chart(fig,use_container_width=True,
+    render_accessible_chart(fig,use_container_width=True,
                     config={"displayModeBar":False,"responsive":True})
 
 

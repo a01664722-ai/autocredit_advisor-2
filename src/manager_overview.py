@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from src.accessibility_theme import render_accessible_chart
 
 from src import store
 from src.kpi_views import ANALYSTS
@@ -58,10 +59,14 @@ ANALYST_IDS={aid:person for person,aid,_ in ANALYSTS}
 def _kcard(label,value,detail,tone="green",p=None):
     fg,bg=PALETTES[tone]
     bar="" if p is None else f'<div class="ac-mgr-track"><div style="width:{min(max(p,0),1)*100:.1f}%"></div></div>'
+    status=("" if p is None else
+            " · ✓ Meta lograda" if p>=1 else
+            " · ◇ En progreso" if p>=.5 else
+            " · ✕ Por debajo del 50% de la meta")
     return (f'<div class="ac-mgr-kpi" style="--tone:{fg};--panel:{bg}">'
             f'<div class="ac-mgr-label">{html.escape(label)}</div>'
             f'<div class="ac-mgr-val">{html.escape(str(value))}</div>'
-            f'<div class="ac-mgr-desc">{html.escape(detail)}</div>{bar}</div>')
+            f'<div class="ac-mgr-desc">{html.escape(detail+status)}</div>{bar}</div>')
 
 
 def format_executive_chart(fig,height=380,horizontal=False):
@@ -93,7 +98,7 @@ def format_executive_chart(fig,height=380,horizontal=False):
 
 def _fig(fig,height=380,horizontal=False):
     format_executive_chart(fig,height=height,horizontal=horizontal)
-    st.plotly_chart(fig,use_container_width=True,
+    render_accessible_chart(fig,use_container_width=True,
                     config={"displayModeBar":False,"responsive":True})
 
 
