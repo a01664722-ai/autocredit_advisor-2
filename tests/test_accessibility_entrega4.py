@@ -1,5 +1,6 @@
 """Pruebas de accesibilidad de Entrega 4 sin alterar motor ni datos."""
 from pathlib import Path
+from types import SimpleNamespace
 import re
 
 import pytest
@@ -35,6 +36,13 @@ def test_theme_is_explicit_and_respects_mode_switch():
     assert ".ac0-cardtitle" in light
     with pytest.raises(ValueError):
         theme.theme_css("sepia",False)
+
+
+def test_system_theme_follows_native_streamlit_menu(monkeypatch):
+    monkeypatch.setattr(theme.st, "context", SimpleNamespace(theme=SimpleNamespace(type="light")))
+    assert theme.visual_preferences({"ac_visual_theme":"Sistema"})==("Claro",False)
+    monkeypatch.setattr(theme.st, "context", SimpleNamespace(theme=SimpleNamespace(type="dark")))
+    assert theme.visual_preferences({"ac_visual_theme":"Sistema"})==("Oscuro",False)
 
 
 def test_options_keep_labels_while_profiles_change():
