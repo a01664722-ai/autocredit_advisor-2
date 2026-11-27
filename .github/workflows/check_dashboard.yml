@@ -1,0 +1,36 @@
+name: Verificar interfaz, KPIs y contraste WCAG B3
+
+on:
+  push:
+    branches:
+      - main
+      - v3-integracion-xgboost-12v
+      - entrega4-seguimiento
+  pull_request:
+    branches:
+      - v3-integracion-xgboost-12v
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Probar V3 y verificar contraste WCAG
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Compilar Python
+        run: python -m compileall -q app.py app_v2.py app_v3.py src vistas scripts
+      - name: "Contraste WCAG 2.2 AA (texto 4.5:1; gráficas 3:1)"
+        run: python scripts/check_contrast_b3.py
+      - name: "Protanopía y deuteranopía · paleta y símbolos"
+        run: python -m scripts.check_cvd_b3
+      - name: Pruebas de datos, permisos, KPI y flujos
+        run: python -m pytest -q

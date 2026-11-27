@@ -1,0 +1,94 @@
+{
+  "titulo": "Entrega 4 · Equipo 3 · Riesgo crediticio automotriz",
+  "version": 1,
+  "tareas": [
+    {
+      "id": "baseline",
+      "titulo": "Modelos baseline y challengers",
+      "responsable": "Emiliano + Yexalén",
+      "evidencia": "Logit, Random Forest y XGBoost entrenados; capturas de SAS Model Studio y Python.",
+      "estado": "Completado",
+      "nota": "Modelos desarrollados en Colab y SAS",
+      "enlace": "",
+      "actualizado_por": "Equipo 3",
+      "actualizado_en": "2026-11-05 17:45"
+    },
+    {
+      "id": "hiperparametros",
+      "titulo": "Configuración de hiperparámetros",
+      "responsable": "Emiliano",
+      "evidencia": "Tabla con parámetros de los tres modelos y justificación.",
+      "estado": "Completado",
+      "nota": "Matriz de confusión, metricas comparativas de cada modelo COLAB y SAS",
+      "enlace": "",
+      "actualizado_por": "Equipo 3",
+      "actualizado_en": "2026-11-05 17:45"
+    },
+    {
+      "id": "comparacion",
+      "titulo": "Comparación y evaluación",
+      "responsable": "Yexalén",
+      "evidencia": "Matriz con ROC-AUC, KS, F1, Accuracy y matrices de confusión.",
+      "estado": "Completado",
+      "nota": "Comparación realizada en Colab y SAS\nAdicional: elección del modelo campeón",
+      "enlace": "",
+      "actualizado_por": "Equipo 3",
+      "actualizado_en": "2026-11-05 17:46"
+    },
+    {
+      "id": "campeon",
+      "titulo": "Modelo campeón y resultado analítico",
+      "responsable": "José Carlos + Marcos",
+      "evidencia": "Modelo seleccionado, métricas, variables importantes y explicación financiera.",
+      "estado": "Parcial",
+      "nota": "Modelo seleccionado; falta explicación financiera.",
+      "enlace": "",
+      "actualizado_por": "Equipo 3",
+      "actualizado_en": ""
+    },
+    {
+      "id": "gobernanza",
+      "titulo": "Gobernanza en SAS Model Manager",
+      "responsable": "Emiliano + Marcos",
+      "evidencia": "Capturas de registro, versión, limitaciones y monitoreo del modelo.",
+      "estado": "Completado",
+      "nota": "Registrado como completado por el equipo.",
+      "enlace": "",
+      "actualizado_por": "Equipo 3",
+      "actualizado_en": ""
+    },
+    {
+      "id": "pipeline",
+      "titulo": "Pipeline y reglas de decisión",
+      "responsable": "Edwin",
+      "evidencia": "Flujo Datos → Predicción → Regla → Decisión → Acción; tabla de umbrales justificados.",
+      "estado": "Parcial",
+      "nota": "Faltan evidencias de SAS Intelligent Decisioning y reglas de negocio.",
+      "enlace": "",
+      "actualizado_por": "Equipo 3",
+      "actualizado_en": "2026-11-05 17:47"
+    },
+    {
+      "id": "dashboard",
+      "titulo": "Dashboard analítico",
+      "responsable": "Valeria",
+      "evidencia": "Cuatro KPI, gráficas, modelo campeón, implicaciones y capturas de SAS Visual Analytics.",
+      "estado": "Completado",
+      "nota": "Streamlit terminado; falta SAS Visual Analytics.",
+      "enlace": "",
+      "actualizado_por": "Equipo 3",
+      "actualizado_en": "2026-11-05 17:48"
+    },
+    {
+      "id": "documentacion",
+      "titulo": "Conclusiones y entrega documental",
+      "responsable": "José Carlos + Yexalén",
+      "evidencia": "Conclusiones, limitaciones, portada, referencias APA, declaración de IA y PDF final.",
+      "estado": "Parcial",
+      "nota": "Falta integrar resultados verificados y revisar formato de Canvas.",
+      "enlace": "",
+      "actualizado_por": "Equipo 3",
+      "actualizado_en": "2026-11-05 17:48"
+    }
+  ]
+}

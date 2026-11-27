@@ -1,52 +1,41 @@
-# Ajuste solicitado por el profesor · KPIs de riesgo crediticio · Equipo 3
+# Ajuste final de KPI · AutoCredit Advisor V3
 
-**Objetivo:** reemplazar el predominio de productividad por **tres KPI de riesgo y uno de productividad**, conservando el modelo XGBoost, la política crediticia, la bitácora, los colores y los controles existentes. Este ajuste está conectado entre P1 (Bandeja), Mis indicadores de Adrián/Sofía, y las dos pantallas de Mariana.
+**Alcance limitado:** únicamente el KPI inicial de riesgo y el KPI de productividad de las cuatro pantallas donde aparecen: P1 Bandeja, Mis indicadores, Analistas y KPI y Métricas del área. Los otros dos KPI principales, la política crediticia, XGBoost/Logit, los datos, la bitácora, autorizaciones, gráficas restantes y mensajería mantienen su implementación anterior.
 
-## Cuatro indicadores principales (riesgo primero)
+## Cuatro KPI principales, en el mismo orden para Adrián, Sofía y Mariana
 
-| Orden | KPI | Fórmula / origen | Interpretación | ¿Meta? |
-|---|---|---|---|---|
-| **1** | **Exposición de alto riesgo evaluada (u.m.)** | Suma de `LOAN_AMOUNT` de los Loan ID cuya **última decisión registrada durante el mes** conserva `suggested = "Rechazar"`. El monto se enlaza con `M.scores` (TEST) por `LOAN_ID` y `ANALISTA_ID`. | Valor nominal de solicitudes de alto riesgo **evaluadas**, sea cual sea la decisión humana final. **NO** es cartera desembolsada, pérdidas evitadas, pérdida esperada ni utilidad. | **Sin meta**, porque una exposición mayor no equivale a mejor trabajo. |
-| **2** | **Casos de alto riesgo atendidos** | Número de solicitudes con decisión mensual cuya recomendación XGBoost guardada fue `Rechazar`. | Casos de alta PD revisados por el analista. El modelo anticipa riesgo; no certifica incumplimiento real. | Meta operativa de revisión editable por Mariana (15 casos iniciales por analista). |
-| **3** | **PD promedio evaluada** | Promedio aritmético de `pd_xgb` guardadas en decisiones del mes. | Perfil de riesgo de los casos revisados. **No** es porcentaje de créditos que incumplieron ni una calificación de desempeño individual. | **Sin meta**, porque no conviene aumentar artificialmente la PD promedio. |
-| **4** | **Decisiones del mes · productividad** | Número de préstamos diferentes cuya última decisión registrada pertenece al mes actual, en horario CDMX. | Volumen operativo de trabajo documentado. | Meta editable por Mariana (50 casos iniciales por analista). |
+| Orden | KPI visible | Cálculo | Meta de gerencia |
+|---|---|---|---|
+| 1 | **Atención prioritaria de riesgo alto** | **Casos con recomendación guardada `Rechazar` y decisión registrada en el mes / total de decisiones únicas registradas en el mes.** El contador de riesgo alto coincide con el KPI 2; el denominador es *todo el trabajo atendido del mes*. | **60% inicial** por analista, editable por Mariana en **Analistas y KPI**. Se calcula avance respecto de la meta y semáforo. Si no hay decisiones, mostrar «—», nunca 0%. |
+| 2 | **Casos de alto riesgo atendidos** | Casos del mes que XGBoost recomendó rechazar al decidir, independientemente de la decisión humana. | Conteo mensual editable, **15 iniciales** por analista, o la meta que ya haya definido gerencia. |
+| 3 | **PD promedio evaluada** | Media de la probabilidad `pd_xgb` almacenada al decidir; en gerencia se pondera por decisiones mensuales. | **Sin meta**: es una descripción de riesgo, no un objetivo de aumento. |
+| 4 | **Atendidas vs meta** | **Número de solicitudes distintas con decisión del mes / meta de decisiones del mes.** Ya no se usan solicitudes asignadas como denominador del KPI. | **50 iniciales** por analista (clave interna `Decisiones mensuales`), editable por Mariana; para el área la meta de ambos analistas se suma. |
 
-### Reglas para evitar cifras engañosas
+Ejemplo: si Adrián atendió 10 solicitudes y 8 tuvieron recomendación de alto riesgo, el primer KPI presenta **80.0% / 60.0%** y el último **10 / 50** (si gerencia conserva esas metas). El segundo permanece **8 / meta de casos de alto riesgo**, y el tercero mantiene su PD media.
 
-- Se usa la decisión más reciente de cada Loan ID en SQLite y se filtra el mes en zona `America/Mexico_City`. Una edición **no duplica** los conteos.
-- El riesgo se determina por la `suggested` y `pd_xgb` **guardadas al decidir**. Cambiar luego el corte gerencial no reescribe la historia.
-- El importe procede de `LOAN_AMOUNT` de TEST, nunca de una moneda inventada. Se identifica como **u.m.** (unidad monetaria no especificada).
-- Si falta un Loan ID o corresponde a otro analista, la exposición indica **«—»**, no `0`. Si no hay casos de alto riesgo revisados sí corresponde `0 u.m.`.
-- Con cero decisiones, la **PD promedio** muestra **«—»**, no 0% ni una estimación inventada.
-- **No se utiliza `DEFAULT` observado** para puntuar a Adrián o Sofía. Con créditos sintéticos de TEST no se puede afirmar que un analista evitó pérdidas, detectó incumplimientos realizados o generó ganancias.
-- Los dos KPI informativos carecen de metas; solo los de revisión y productividad comparten la configuración de gerencia. Cambiar una meta en Mariana notifica a ambos analistas.
+## Interpretación y controles
 
-## Conexión entre pantallas (sin una fórmula distinta para cada perfil)
+La **atención prioritaria** mide *en qué proporción se revisan solicitudes riesgosas* dentro del trabajo mensual, y sirve para supervisar el foco operativo. **No es** tasa de default, precisión de XGBoost, pérdidas evitadas, porcentaje de rechazos finales ni calificación de la decisión humana. Una aprobación o condición justificada distinta de la sugerencia XGBoost sigue contándose como caso de alto riesgo revisado. Como depende de la composición de solicitudes, debe interpretarse junto al volumen y nunca usarse para imponer rechazos ni castigar excepciones justificadas.
 
-| Vista | Código | Mismo cálculo compartido |
-|---|---|---|
-| P1 · Bandeja Adrián/Sofía | `app_v3.py` | `monthly_summary(store.decisions_map(analyst_id), analyst_id, scored=M.scores)` |
-| Mis indicadores de Adrián/Sofía | `src/kpi_views.py` | `monthly_summary(..., scored=score_df)`; cuatro tarjetas principales y antiguos indicadores complementarios desplegables |
-| Gerencia · Métricas del área | `src/manager_overview.py` | `build_team_metrics(store.decisions(), targets, scores=M.scores)`; suma de exposiciones, conteos y PD ponderada por decisiones |
-| Gerencia · Analistas y KPI | `src/kpi_views.py` | El mismo `monthly_summary` para cada analista; Mariana puede comparar por cualquiera de los cuatro KPI y conserva las metas editables |
+Se cuenta la **última decisión por Loan ID** en la misma SQLite por ambos roles. Solo se consideran registros cuyo `updated_at` pertenece al mes en `America/Mexico_City`. Se conserva la sugerencia de XGBoost guardada al decidir (no se recalcula con cambios posteriores en la política). Los Loan ID y las asignaciones son demostrativos y los datos son sintéticos.
 
-**Fuente única de definición:** `src/monthly_kpis.py` (incluye `RISK_HEADLINES`, `monthly_summary` y `fmt_risk`).
+El KPI de **productividad** es mensual: `decisiones únicas del mes / meta mensual`. Es independiente de la cantidad de préstamos asignados en TEST. Si no hay decisiones se muestra `0 / meta`; la prioridad de riesgo se muestra `— / meta` porque una proporción sin denominador no es evaluable.
 
-## Menú «Decisión rápida»
+La gerente **Mariana** puede editar la meta porcentual de prioridad (entre 0% y 100%, con mínimo positivo), la meta mensual de atenciones, y las metas preexistentes. Su confirmación utiliza `store.set_targets_batch`: guarda en la misma SQLite, conserva metas existentes, y envía notificación a Adrián y Sofía. Ambos analistas ven las metas actualizadas al recargar/rerun su vista.
 
-El desplegable del `st.data_editor` conservó sus opciones y reglas para aceptar, condicionar, rechazar y abrir detalle; solo se añadió **un contorno y halo verde neón** con el verde existente `#52dc9a` a portales/listbox de Streamlit y Glide Data Grid. No cambió el sistema de colores de riesgo.
+## Consistencia entre pantallas
 
-## Pruebas
+| Pantalla | Fuente |
+|---|---|
+| P1 · Bandeja de Adrián y Sofía | `app_v3.py` llama `monthly_summary(decisiones,analyst_id,scored=M.scores)`. Las tarjetas primera y cuarta toman `store.targets()`. |
+| Mis indicadores de Adrián y Sofía | `src/kpi_views.py:render_analyst_month` llama el mismo `monthly_summary` y `store.targets()`. |
+| Gerencia · Analistas y KPI | `src/kpi_views.py:render_manager_month` obtiene el resumen mensual individual por analista y la misma tabla `targets`; allí se editan ambas metas. |
+| Gerencia · Métricas del área | `src/manager_overview.py:build_team_metrics` agrega conteos de ambos analistas y calcula prioridad como **suma de casos de riesgo alto / suma de decisiones**, nunca promediando porcentajes individuales sin ponderar. Productividad = suma de atendidas / suma de metas mensuales. |
 
-**`tests/test_risk_kpi_integration.py`** comprueba:
+## Verificación y rúbrica
 
-- Los cuatro KPI, el orden correcto y su cálculo exacto por Loan ID.
-- Consistencia entre Adrián, Sofía y consolidado de Mariana.
-- Que invertir `DEFAULT` no altera los KPI del personal.
-- Identificación faltante/ajena: exposición no evaluable, nunca cero inventado.
-- Persistencia SQLite sin doble conteo y avisos al modificar metas.
-- Que P1, las páginas de analistas y gerencia usan la misma función y que el contorno neón aparece en CSS.
+`tests/test_risk_kpi_integration.py` incluye consistencia de las cuatro pantallas, agregación gerencial ponderada, casos con cero decisiones, independencia de `DEFAULT` y excepciones humanas, persistencia SQLite, validación de meta porcentual, edición de metas y avisos a ambos analistas. Las pruebas anteriores de modelo, permisos y el contraste WCAG B3 se mantienen.
 
-**CI existente:** `.github/workflows/check_dashboard.yml` ejecuta compilación Python, contraste WCAG y `pytest`. Un CI verde verifica código y reglas; la prueba definitiva de que el contorno se aprecia al desplegar es **visual, en el navegador**, y no puede certificarse solo por el script.
+El panel de gerencia mantiene el arreglo previo por el cual la curva de productividad usa siempre la meta de `Decisiones mensuales`, aunque se seleccione un indicador informativo sin meta, para evitar el error de `goal=None`. Se conservan las leyendas con espacio suficiente bajo los gráficos.
 
-**Alcance:** es una aplicación académica con datos sintéticos y login demostrativo. Los KPI no deben usarse para aprobar créditos reales ni para calcular incentivos laborales.
+**Límite de prueba:** CI verifica cálculos, integración y criterios automatizables, pero no certifica que la app desplegada haya actualizado visualmente todos los perfiles. Streamlit Cloud debe apuntar a `app_v3.py` en la rama `v3-integracion-xgboost-12v` después del merge.
