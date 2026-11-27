@@ -50,3 +50,21 @@ def test_policy_and_override(tmp_path,monkeypatch):
     msg=store.messages('gerente')[0]
     store.mark_read(msg['id'],'gerente')
     assert store.unread('gerente')==0
+
+
+
+def test_both_analyst_profiles_receive_disjoint_test_loans(context):
+    """La partición de asignación no cambia con el perfil seleccionado."""
+    _train,_test,model=context
+    scores=model.scores
+    assigned=set(scores["ANALISTA_ID"].unique())
+    assert assigned=={"A-017","A-022"}
+    adrian=set(scores.loc[scores["ANALISTA_ID"]=="A-017","LOAN_ID"].astype(str))
+    sofia=set(scores.loc[scores["ANALISTA_ID"]=="A-022","LOAN_ID"].astype(str))
+    assert len(adrian)>0 and len(sofia)>0
+    assert adrian.isdisjoint(sofia)
+    assert len(adrian)+len(sofia)==len(scores)==20000
+    # Cada perfil contiene exactamente las mismas 12 variables del motor.
+    assert all(col in scores.columns for col in COLS)
+    assert scores.loc[scores["ANALISTA_ID"]=="A-022","PD_XGB"].between(0,1).all()
+    assert scores.loc[scores["ANALISTA_ID"]=="A-017","PD_XGB"].between(0,1).all()

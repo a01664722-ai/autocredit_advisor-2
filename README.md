@@ -1,113 +1,46 @@
-# AutoCredit Advisor · Dashboard en Streamlit
+https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/
 
-Tablero de riesgo de crédito automotriz para tres personas sobre el mismo dato:
+# AutoCredit Advisor · Equipo 3 · Entregables 1–3
 
-| Persona | Pantalla | Decisión que habilita |
-|---|---|---|
-| **Adrián** · analista de crédito | P1 Bandeja · P2 Ficha | Aprobar, condicionar o rechazar una solicitud en < 5 min |
-| **Mariana** · gerente de riesgo | P3 Cartera por segmento | Endurecer o relajar la política de un segmento |
-| **Luis** · operación del modelo | P4 Monitor operativo | Escalar una alerta o descartarla con nota |
-| Todos | P0 Inicio de sesión · P5 Estados y recorridos · P6 Gobierno de datos | Acceso, recuperación y transparencia |
+**App de la presentación:** `app_v3.py` de la rama `v3-integracion-xgboost-12v`, con XGBoost de 12 variables, TRAIN/TEST y perfiles de Adrián, Sofía, Mariana y Soporte. **Verifica en Streamlit Cloud que el despliegue apunte a esa rama y archivo**; el repositorio conserva `app.py` de una versión previa.
 
-## Cómo correrlo en Visual Studio Code
+| Entrega | Evidencia de este repositorio |
+|---|---|
+| **B1 · Plan / Design** | [Contrato del prompt](contrato-prompt.md), [registro B1](prompts/B1.md), [observaciones del profesor](docs/entregable-1.md) |
+| **B2 · Build / Test** | [Contrato de datos](contrato-datos.md), [investigación de Anthropic](investigacion/claude.md), [registro B2](prompts/B2.md), [pruebas y evidencia](docs/entregable-2.md) |
+| **B3 · Accesibilidad y roles** | [Ficha con seis secciones](docs/entregable-3.md), [investigación 1](investigacion/1-user-persona.md), [investigación 3](investigacion/B3.md), [registro B3](prompts/B3.md) |
 
-1. Abre la carpeta `autocredit_advisor` en VS Code (**Archivo → Abrir carpeta**). Acepta instalar las extensiones recomendadas (Python, Pylance, Debugpy).
-2. Verifica que `data/Base_SAS_Equipo3.csv` exista (ya viene incluido).
-3. Crea el entorno: **Terminal → Ejecutar tarea… → «Crear entorno e instalar dependencias»**, o en la terminal:
-   ```bash
-   python -m venv .venv
-   # Windows
-   .venv\Scripts\activate
-   # macOS / Linux
-   source .venv/bin/activate
-   pip install -r requirements-dev.txt
-   ```
-4. Selecciona el intérprete `.venv` (**Ctrl+Shift+P → Python: Select Interpreter**).
-5. Corre el tablero:
-   - **F5** con la configuración «AutoCredit Advisor (Streamlit)» (permite poner breakpoints), o
-   - `streamlit run app.py` en la terminal. Se abre en http://localhost:8501.
-6. Pruebas: pestaña **Testing** de VS Code o `pytest` (41 pruebas: modelo, seguridad, registros y la app completa por rol).
+**Automatización B3/B4:** `python scripts/check_contrast_b3.py` (contraste original), `python -m scripts.check_cvd_b3` (simulación de protanopía/deuteranopía, 18 pares) y `python -m pytest -q`. Ver [workflow V3](.github/workflows/check_dashboard.yml), [ficha B3](docs/entregable-3.md), [investigación de accesibilidad](investigacion/B3.md) y [auditoría de Entrega 4](docs/entregable-4.md). **Tema claro y modo daltónico** se activan explícitamente desde el acceso y la barra lateral; las decisiones, modelos, datos y umbrales originales no se modificaron.
 
-Requiere Python 3.10 o superior y Streamlit 1.66 o superior.
+**Última retroalimentación de gerencia del curso:** se priorizan **tres indicadores de riesgo crediticio y uno de productividad**, en el mismo orden y con la misma fórmula para Adrián, Sofía y Mariana. El primer KPI mide **atención prioritaria de riesgo alto (casos de alto riesgo atendidos / todas las solicitudes atendidas del mes)** y tiene meta porcentual editable por Mariana (60% inicial); no mide incumplimientos ni fuerza rechazos. El KPI de productividad muestra **atendidas vs meta mensual gerencial** (50 casos iniciales por analista) sin usar solicitudes asignadas como denominador. Las cuatro pantallas comparten cálculo y metas. [Consultar metodología, integración entre pantallas y pruebas](docs/kpis-riesgo-integracion.md). El selector de **Decisión rápida** recibe únicamente un contorno verde neón con el color actual, sin modificar su función.
 
-### Cuentas de prueba (modo demostración)
+**Seguridad:** acceso por perfiles **de demostración**, no autenticación institucional; la URL pública y el conjunto sintético no deben usarse para evaluar solicitantes reales.
 
-Sin `.streamlit/secrets.toml` la app arranca en **modo demostración** y en P0 eliges una cuenta:
 
-| Cuenta | Rol | Qué ve |
-|---|---|---|
-| Adrián Pérez (A-017) | analista | P1, P2, P5, P6 — solo sus 25 solicitudes |
-| Sofía Reyes (A-022) | analista | Lo mismo, con otras 25 solicitudes (demuestra el filtro por ANALISTA_ID) |
-| Mariana Torres | gerente | P3, P5, P6 — solo agregados |
-| Luis Ramírez | operación | P4, P5, P6 — métricas y distribuciones |
-| Invitado sin rol | — | «Pide acceso a tu gerente», ningún dato |
+## Cómo ejecutar exactamente la V3
 
-En la barra lateral, **Controles de demostración** permite simular la expiración de sesión, cambiar el escenario del monitor (drift, normal, carga atrasada, datos incompletos) y reiniciar la bitácora.
-
-### Inicio de sesión real (OIDC)
-
-Copia `.streamlit/secrets.toml.example` como `.streamlit/secrets.toml`, llena `[auth]` con tu proveedor (Microsoft Entra ID o Google), da de alta los correos en `[roles]` e instala `pip install "streamlit[auth]"`. Con eso P0 usa `st.login` y la tabla correo → rol vive fuera del repositorio.
-
-## Estructura
-
-```
-autocredit_advisor/
-├── app.py                  # entrada: sesión, rol → navegación, barra lateral
-├── vistas/                 # una pantalla por archivo
-│   ├── p0_login.py · sin_acceso.py
-│   ├── p1_bandeja.py · p2_ficha.py        # Adrián
-│   ├── p3_cartera.py                      # Mariana
-│   ├── p4_monitor.py                      # Luis
-│   └── p5_estados.py · p6_gobierno.py     # todos
-├── src/
-│   ├── config.py           # umbrales, políticas y REGISTROS (filtros, controles, métricas)
-│   ├── seguridad.py        # matrices persona × pantalla y persona × dato (las aplica el código)
-│   ├── auth.py             # st.login / modo demo, expiración de sesión, exigir_acceso()
-│   ├── datos.py            # carga, validación de esquema, segmentos
-│   ├── modelo.py           # regresión logística, explicación local, enganche requerido, PSI
-│   ├── simulacion.py       # lo que la base aún no trae (folios, horas, decisiones)
-│   ├── servicios.py        # caché separada por rol
-│   ├── almacen.py          # bitácora SQLite (decisiones, borradores, alertas)
-│   ├── graficas.py         # G1–G10 en Plotly, modo claro y oscuro
-│   └── ui.py               # rótulos de origen, filtros amarrados, corte activo, estados vacíos
-├── tests/                  # pytest
-├── data/                   # CSV (ignorado por git) y bitácora autocredit.db (se crea sola)
-├── .streamlit/             # config.toml (tema y exposición) + secrets.toml.example
-└── .vscode/                # launch.json (F5), tasks.json, settings.json, extensions.json
+```bash
+python -m pip install -r requirements.txt -r requirements-dev.txt
+streamlit run app_v3.py
 ```
 
-## Semana 1 · KPI iniciales (Entrega 4)
+El código usa los archivos `data/Base_SAS_Equipo3_TRAIN_12V.csv` y `data/Base_SAS_Equipo3_TEST_12V.csv`; entrena XGBoost y Logit con TRAIN, utiliza los cortes calibrados en validación y evalúa TEST. La demo no realiza decisiones reales de crédito.
 
-Nueva pantalla **P7 · Mis indicadores** accesible para los tres roles (Adrián y Sofía comparten el rol analista, pero conservan sus respectivas bandejas):
-- **Analistas:** solicitudes asignadas, pendientes y casos con datos por revisar, calculados sobre SU bandeja **SIMULADA**.
-- **Gerente:** registros históricos, tasa observada de default y DTI medio de la base **REAL**.
-- **Operación:** registros revisados, completitud de variables críticas y filas fuera de límites, sobre la base **REAL**.
+### Quién ve qué (versión implementada)
 
-Los KPI nunca mezclan cifras simuladas con observaciones históricas sin distinguir su fuente. El módulo de evaluación de modelos y su matriz de confusión se deja para una validación formal con 3 modelos y partición Training/Validation/Test; la regresión logística de la demo no se presenta como modelo campeón.
-Contiene **3 tarjetas 100% calculadas desde el CSV REAL**: registros de créditos, tasa histórica de
-incumplimiento y DTI promedio. Las fórmulas y límites están documentados en
-`ENTREGA_SEMANA1_KPI.md`, y las pruebas en `tests/test_kpis.py`.
-
-## Cómo se atendió la retroalimentación
-
-| Bloque | Observación | Qué hace ahora el tablero |
+| Perfil | Vistas permitidas | Decisión / función |
 |---|---|---|
-| **C** (−1) | Solo había error en el login; faltaba un recorrido de error dentro del flujo de análisis | Cada flujo tiene errores **dentro del análisis**, programados y probados: en P2, dato faltante (Aprobar bloqueado → «Pedir documento» → llega el documento → PD recalculada), dato fuera del rango de entrenamiento (sin recomendación, motivo obligatorio), dato imposible (no se calcula PD), contradecir al modelo sin motivo (no se guarda), folio ajeno (bloqueo sin datos) y sesión expirada (regresa a la misma solicitud con su borrador). En P3, corte vacío, n < 30 y curva sin sustento. En P4, datos viejos, ventana vacía y escalar/descartar sin nota. P5 muestra los tres recorridos con cada bifurcación y un catálogo con «cómo verlo». |
-| **E** (−1) | No todos los filtros se amarraban a la decisión de una persona | Todo filtro (F1–F7) **y todo control de vista** (C1–C3) sale de un registro en `config.py` con persona, decisión y valor por defecto. Debajo de cada widget se lee «↳ Mariana decide: …». `tests/test_registros.py` falla si alguno queda sin persona o decisión, o si la persona no puede ver esa pantalla. P6 lista filtros, controles y filtros descartados con su razón. |
-| **F** (−1) | La matriz persona × dato sensible no aparecía completa como tabla | P6 muestra la **matriz completa** (32 datos × 3 personas + tratamiento): las 12 columnas de la base, los calculados, las columnas operativas propuestas y las protegidas que no vienen en esta base. Esa misma tabla es la que consulta el código: `aplicar_politica_fila()` recorta lo que recibe la ficha, `servicios` verifica el nivel antes de entregar agregados y lo no listado se niega por defecto. |
+| **Adrián A-017** | Bandeja, Ficha, Mis indicadores, Mensajes | Sus solicitudes, decisiones y motivos |
+| **Sofía A-022** | Bandeja, Ficha, Mis indicadores, Mensajes | Sus solicitudes, decisiones y motivos |
+| **Mariana, gerencia** | Métricas del área, Analistas y KPI, Mensajes, Auditoría de accesos | Metas, política y revisión |
+| **Especialista de Soporte** | Centro de soporte, Validación del modelo, Mensajes | Incidencias y evaluación técnica |
 
-## Mejoras adicionales que encontramos
+**Integridad de la demo:** se filtran préstamos por `ANALISTA_ID`; una excepción a la recomendación necesita motivo y notificación; la bitácora usa SQLite temporal. El usuario puede seleccionar perfiles de prueba sin autenticar una identidad, por lo que es un prototipo académico.
 
-- **Datos reales, no supuestos.** El PDF describía 100,000 × 83 columnas; `Base_SAS_Equipo3.csv` trae **80,000 × 12** (default 13.48%, sin nulos). Se quitaron los elementos que no existen en la base (score de crédito, tipo de vehículo, situación laboral) y se reemplazaron por segmentos reales (DTI, enganche, pagos fallidos, bancarrota, LTV).
-- **Modelo real de PD.** Regresión logística (AUC 0.777 en un 25% que el modelo no vio, igual que un gradient boosting). Con eso G1, G2, G4 y **G7 dejan de ser SIMULADOS** y pasan a CALCULADOS.
-- **Equidad.** `FINANCIAL_LITERACY_SCORE` se excluye del modelo: puede ser proxy socioeconómico, no se puede comprobar con un documento y solo aporta ~0.0015 de AUC (la ficha del modelo muestra la diferencia en vivo).
-- **«Condicionar» con número.** La ficha calcula el enganche mínimo que deja la PD bajo el corte y deja ajustarlo (control C3).
-- **Bitácora que conecta personas.** La decisión de Adrián se guarda en SQLite y alimenta el acuerdo modelo–analista que vigila Luis (con folio enmascarado). Las alertas escaladas o descartadas quedan con nota para el siguiente turno.
-- **Salud del modelo** (revisión mensual): AUC, KS, recall al corte, calibración esperado vs. observado por decil.
-- **Tiempo por decisión** medido contra la meta de 5 min.
-- **Exposición:** tracebacks ocultos, exportación nativa de tablas desactivada, la única descarga es la propuesta agregada de Mariana, caché separada por rol, `.gitignore` para CSV, bitácora y secretos.
-- **Accesibilidad:** modo claro y oscuro, estados con ícono + texto (nunca solo color), «Ver como tabla» en las gráficas clave, un solo eje Y por gráfica.
+### Verificación
 
-## Rótulos de origen
+- `python scripts/check_contrast_b3.py` calcula y comprueba razones de contraste de los tokens de texto y series de las gráficas de V3.
+- `python -m pytest -q` valida reglas de negocio, aislamiento de casos, KPI, preguntas de gráficas, estados y filtros.
+- [Workflow V3 y resultado de CI](.github/workflows/check_dashboard.yml) (el estado de cada corrida se consulta en [Actions](https://github.com/a01664722-ai/autocredit_advisor-2/actions)).
 
-Cada gráfica lleva **REAL** (columna de la base), **CALCULADO** (derivado de la base o del modelo), **SIMULADO** (dato propuesto que la base aún no trae) o **POLÍTICA** (umbral del equipo). Lo simulado siempre se construye con filas REAL del holdout y es determinista por fecha, así que cada recarga muestra los mismos números.
+La paleta operativa oscura original se conserva. Se añadió **paleta inclusiva opcional** con etiquetas, símbolos y patrones, y estilos específicos de tema claro. La simulación y las comprobaciones estáticas no sustituyen pruebas visuales en navegador. **Falta recibir la referencia exacta de la investigación 1 del curso** (distinta del PDF del user persona) para cerrar ese criterio documental sin inventar fuentes.
