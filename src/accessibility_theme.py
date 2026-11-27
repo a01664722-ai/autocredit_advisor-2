@@ -8,7 +8,7 @@ from __future__ import annotations
 import streamlit as st
 import plotly.graph_objects as go
 
-THEMES = ("Oscuro", "Claro")
+THEMES = ("Sistema", "Oscuro", "Claro")
 SIGNS = {"Aceptar": "✓ Aceptar", "Condicionar": "◇ Condicionar", "Rechazar": "✕ Rechazar"}
 CVD_DARK = ("#74D5FF", "#FFD166", "#F7A3CF")
 CVD_LIGHT = ("#005A8C", "#815000", "#8E285C")
@@ -20,11 +20,20 @@ def decision_label(value: str) -> str:
 
 def visual_preferences(session=None) -> tuple[str, bool]:
     session = st.session_state if session is None else session
-    return (
-        session.get("ac_visual_theme", "Oscuro")
-        if session.get("ac_visual_theme", "Oscuro") in THEMES else "Oscuro",
-        bool(session.get("ac_cvd_mode", False)),
-    )
+    selected = session.get("ac_visual_theme", "Sistema")
+    if selected == "Sistema":
+        # Se vincula al menu nativo Streamlit (Light/Dark/System). Puede
+        # requerir un rerun en algunas versiones tras cambiar ese menu.
+        try:
+            detected = st.context.theme.type
+        except (AttributeError, RuntimeError, KeyError, ValueError):
+            detected = "dark"
+        resolved = "Claro" if detected == "light" else "Oscuro"
+    elif selected in ("Claro", "Oscuro"):
+        resolved = selected
+    else:
+        resolved = "Oscuro"
+    return resolved, bool(session.get("ac_cvd_mode", False))
 
 
 def preference_controls(location: str) -> None:
@@ -35,7 +44,7 @@ def preference_controls(location: str) -> None:
     st.segmented_control(
         "Tema de la aplicación",
         list(THEMES),
-        default="Oscuro",
+        default="Sistema",
         key="ac_visual_theme",
         selection_mode="single",
         help="Este selector controla también las tarjetas y las gráficas; no solo el fondo.",
@@ -169,7 +178,7 @@ _CVD_LIGHT = r"""
 
 
 def theme_css(theme: str, cvd: bool) -> str:
-    if theme not in THEMES:
+    if theme not in ("Oscuro", "Claro"):
         raise ValueError("Tema invalido")
     css = _LIGHT_CSS if theme == "Claro" else _DARK_CSS
     if cvd:
