@@ -1,4 +1,4 @@
-name: B3 - contraste WCAG del dashboard XGBoost V3
+name: B3/B4 - WCAG, daltonismo y pruebas en main
 
 on:
   push:
@@ -14,20 +14,28 @@ permissions:
 
 jobs:
   wcag_v3:
-    name: Revisar paleta, preguntas y estados del dashboard publicado V3
+    name: Revisar el commit ACTUAL de main y preservar B1/B2
     runs-on: ubuntu-latest
     steps:
-      - name: Traer el codigo auditado de la rama V3
+      - name: Traer EL MISMO commit que dispara el pipeline
         uses: actions/checkout@v4
-        with:
-          ref: v3-integracion-xgboost-12v
+      - name: Verificar checkout (sin ref fijo a otra rama)
+        run: |
+          git log -1 --format='Commit verificado: %H'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA" || {
+            echo "En pull requests GitHub valida el merge commit, no el SHA de origen"; exit 0;
+          }
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar dependencias para ejecutar las pruebas del proyecto
+      - name: Instalar dependencias del proyecto
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
-      - name: Contraste WCAG 2.2 AA (texto 4.5:1, marcas 3:1)
+      - name: Compilar codigo del dashboard V3 y pantallas anteriores
+        run: python -m compileall -q app.py app_v2.py app_v3.py src vistas scripts
+      - name: Contraste de texto y series
         run: python scripts/check_contrast_b3.py
-      - name: Verificar preguntas, acceso, filtros y estados vacios
-        run: python -m pytest -q tests/test_contrast_b3.py tests/test_b3_rubric.py
+      - name: Simular protanopia y deuteranopia
+        run: python -m scripts.check_cvd_b3
+      - name: Pruebas de permisos, accesibilidad, KPI y regresion de entregas
+        run: python -m pytest -q
