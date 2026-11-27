@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1220" height="720" viewBox="0 0 1220 720">
+<rect width="1220" height="720" fill="#edf3f0"/>
+<text x="38" y="48" font-family="Arial,sans-serif" font-weight="700" font-size="27" fill="#142820">AutoCredit Advisor · Evidencia de paleta inclusiva</text>
+<text x="38" y="77" font-family="Arial,sans-serif" font-size="15" fill="#394f41">Matrices de Machado et al. (2009), severidad 1.0 · muestras sintéticas de color, NO captura de Streamlit</text><rect x="35" y="100" width="1150" height="277" rx="15" fill="#0f1110" stroke="#738a7a" stroke-width="1"/>
+  <text x="57" y="131" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#f1f7f2">Tema OSCURO</text><text x="65" y="163" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#f1f7f2">VISIÓN HABITUAL</text><text x="445" y="163" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#f1f7f2">PROTANOPÍA</text><text x="825" y="163" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#f1f7f2">DEUTERANOPÍA</text><rect x="57" y="178" width="353" height="46" rx="7" fill="#18201d" stroke="#74D5FF" stroke-width="2"/>
+      <text x="70" y="207" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#74D5FF">✓ Aceptar</text>
+      <text x="289" y="206" font-family="monospace" font-size="12" fill="#74D5FF">#74D5FF</text><rect x="437" y="178" width="353" height="46" rx="7" fill="#18201d" stroke="#BFD2FF" stroke-width="2"/>
+      <text x="450" y="207" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#BFD2FF">✓ Aceptar</text>
+      <text x="669" y="206" font-family="monospace" font-size="12" fill="#BFD2FF">#BFD2FF</text><rect x="817" y="178" width="353" height="46" rx="7" fill="#18201d" stroke="#ABC3FE" stroke-width="2"/>
+      <text x="830" y="207" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#ABC3FE">✓ Aceptar</text>
+      <text x="1049" y="206" font-family="monospace" font-size="12" fill="#ABC3FE">#ABC3FE</text><rect x="57" y="235" width="353" height="46" rx="7" fill="#18201d" stroke="#FFD166" stroke-width="2"/>
+      <text x="70" y="264" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#FFD166">◇ Condicionar</text>
+      <text x="289" y="263" font-family="monospace" font-size="12" fill="#FFD166">#FFD166</text><rect x="437" y="235" width="353" height="46" rx="7" fill="#18201d" stroke="#E7D05B" stroke-width="2"/>
+      <text x="450" y="264" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#E7D05B">◇ Condicionar</text>
+      <text x="669" y="263" font-family="monospace" font-size="12" fill="#E7D05B">#E7D05B</text><rect x="817" y="235" width="353" height="46" rx="7" fill="#18201d" stroke="#F2DC6A" stroke-width="2"/>
+      <text x="830" y="264" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#F2DC6A">◇ Condicionar</text>
+      <text x="1049" y="263" font-family="monospace" font-size="12" fill="#F2DC6A">#F2DC6A</text><rect x="57" y="292" width="353" height="46" rx="7" fill="#18201d" stroke="#F7A3CF" stroke-width="2"/>
+      <text x="70" y="321" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#F7A3CF">✕ Rechazar</text>
+      <text x="289" y="320" font-family="monospace" font-size="12" fill="#F7A3CF">#F7A3CF</text><rect x="437" y="292" width="353" height="46" rx="7" fill="#18201d" stroke="#A9B4D1" stroke-width="2"/>
+      <text x="450" y="321" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#A9B4D1">✕ Rechazar</text>
+      <text x="669" y="320" font-family="monospace" font-size="12" fill="#A9B4D1">#A9B4D1</text><rect x="817" y="292" width="353" height="46" rx="7" fill="#18201d" stroke="#BEC2CD" stroke-width="2"/>
+      <text x="830" y="321" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#BEC2CD">✕ Rechazar</text>
+      <text x="1049" y="320" font-family="monospace" font-size="12" fill="#BEC2CD">#BEC2CD</text><rect x="35" y="393" width="1150" height="277" rx="15" fill="#ffffff" stroke="#738a7a" stroke-width="1"/>
+  <text x="57" y="424" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#15251e">Tema CLARO</text><text x="65" y="456" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#15251e">VISIÓN HABITUAL</text><text x="445" y="456" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#15251e">PROTANOPÍA</text><text x="825" y="456" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#15251e">DEUTERANOPÍA</text><rect x="57" y="471" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#005A8C" stroke-width="2"/>
+      <text x="70" y="500" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#005A8C">✓ Aceptar</text>
+      <text x="289" y="499" font-family="monospace" font-size="12" fill="#005A8C">#005A8C</text><rect x="437" y="471" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#425C8E" stroke-width="2"/>
+      <text x="450" y="500" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#425C8E">✓ Aceptar</text>
+      <text x="669" y="499" font-family="monospace" font-size="12" fill="#425C8E">#425C8E</text><rect x="817" y="471" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#2F508B" stroke-width="2"/>
+      <text x="830" y="500" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#2F508B">✓ Aceptar</text>
+      <text x="1049" y="499" font-family="monospace" font-size="12" fill="#2F508B">#2F508B</text><rect x="57" y="528" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#815000" stroke-width="2"/>
+      <text x="70" y="557" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#815000">◇ Condicionar</text>
+      <text x="289" y="556" font-family="monospace" font-size="12" fill="#815000">#815000</text><rect x="437" y="528" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#605400" stroke-width="2"/>
+      <text x="450" y="557" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#605400">◇ Condicionar</text>
+      <text x="669" y="556" font-family="monospace" font-size="12" fill="#605400">#605400</text><rect x="817" y="528" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#6C5F03" stroke-width="2"/>
+      <text x="830" y="557" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#6C5F03">◇ Condicionar</text>
+      <text x="1049" y="556" font-family="monospace" font-size="12" fill="#6C5F03">#6C5F03</text><rect x="57" y="585" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#8E285C" stroke-width="2"/>
+      <text x="70" y="614" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#8E285C">✕ Rechazar</text>
+      <text x="289" y="613" font-family="monospace" font-size="12" fill="#8E285C">#8E285C</text><rect x="437" y="585" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#39445D" stroke-width="2"/>
+      <text x="450" y="614" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#39445D">✕ Rechazar</text>
+      <text x="669" y="613" font-family="monospace" font-size="12" fill="#39445D">#39445D</text><rect x="817" y="585" width="353" height="46" rx="7" fill="#f4f6f4" stroke="#56575A" stroke-width="2"/>
+      <text x="830" y="614" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#56575A">✕ Rechazar</text>
+      <text x="1049" y="613" font-family="monospace" font-size="12" fill="#56575A">#56575A</text><text x="38" y="700" font-family="Arial,sans-serif" font-size="14" fill="#304638">Verificación numérica reproducible: scripts/check_cvd_b3.py · etiquetas y símbolos permanecen tras simular daltonismo.</text></svg>

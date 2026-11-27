@@ -1,6 +1,11 @@
 https://autocreditadvisor-2-f2ww6wn7nnrysa43edznfp.streamlit.app/
 
-# AutoCredit Advisor  Build y Test
+# AutoCredit Advisor · Equipo 3 · B1 a Entrega 4
+
+**Actualización del 26-nov-2026:** `main` ahora conserva la **app original B1/B2 (`app.py`)** y agrega **V3 (`app_v3.py`)** como punto de entrada de la presentación. El tema Claro/Oscuro y el Modo daltónico se seleccionan desde el acceso y lateral. [Ficha B3](docs/entregable-3.md) · [evidencia numérica y visual](investigacion/B3.md) · [auditoría de Entrega 4](docs/entregable-4.md). Las pruebas de main corren sobre el commit de main, sin checkout fijo a otra rama.
+
+## Historial y evidencias originales B1/B2 preservadas
+
 
 Dashboard de riesgo de crédito en Streamlit. La base `data/Base_SAS_Equipo3.csv` contiene 80,000 registros y 12 columnas. La información se organiza por perfil: analistas, gerencia y soporte.
 
@@ -56,7 +61,7 @@ La base no incluye un identificador de crédito ni fechas de solicitudes. Esos c
 
 ## Última corrección · KPI de riesgo crediticio
 
-El primer indicador de Adrián/Sofía y de Mariana ahora es **exposición de alto riesgo evaluada (u.m.)**, seguido de **casos de alto riesgo atendidos**, **PD promedio evaluada** y **decisiones del mes**. Se calculan desde la misma bitácora de decisiones y los Loan ID de TEST; **no son incumplimientos observados ni pérdidas evitadas**. Las metas de gerencia permanecen compartidas, y los demás indicadores se conservan como complementarios.
+En la V3 final el primer indicador es **Atención prioritaria de riesgo alto / meta porcentual editable**, seguido de **casos de alto riesgo atendidos / meta**, **PD promedio evaluada** (informativa) y **Atendidas vs meta** del mes. Las cifras se sincronizan entre ambos analistas y las dos vistas gerenciales desde SQLite. Esta actualización corrige la nota histórica previa sin alterar el modelo ni usar `DEFAULT` para calificar personal.
 
 [**Definición, fórmulas, conexión entre pantallas y seis pruebas de integración**](docs/kpis-riesgo-integracion.md) · [**Código funcional de V3**](https://github.com/a01664722-ai/autocredit_advisor-2/tree/v3-integracion-xgboost-12v) · [**PR #7 con cambios y pruebas**](https://github.com/a01664722-ai/autocredit_advisor-2/pull/7).
 
@@ -68,7 +73,7 @@ El primer indicador de Adrián/Sofía y de Mariana ahora es **exposición de alt
 | **B2 · Build / Test** | [Investigación Anthropic](investigacion/claude.md), [contrato de datos](contrato-datos.md), [prompts B2](prompts/B2.md), [evidencia B2](docs/entregable-2.md) | Investigación, contrato de datos, validaciones, pruebas y CI reunidos en este repositorio. |
 | **B3 · Lectura, accesibilidad y acceso** | [Ficha de seis secciones](docs/entregable-3.md), [investigación 1](investigacion/1-user-persona.md) y [estudio de accesibilidad B3](investigacion/B3.md), [prompts B3](prompts/B3.md) | Contraste WCAG implementado y validado por CI sobre V3; investigación 1 sintetizada con páginas de la fuente primaria. La auditoría de navegador sigue siendo complementaria. |
 
-**El código de `main` conserva intacta la app histórica B1–B2.** La V3 tiene las preguntas de gráficas, la mejora de menú y el control automático WCAG en su propia rama. Los cambios documentales y el workflow de verificación añadidos en `main` no alteran las decisiones ni el modelo.
+**El código de `main` conserva la app histórica B1/B2 (`app.py`) y sus documentos originales.** La nueva `app_v3.py` está también en `main` para que el CI verifique los mismos archivos que serán auditados; su despliegue en Streamlit Cloud puede continuar en `v3-integracion-xgboost-12v`. Ambos workflows de main validan su propia revisión de código.
 
 
 
