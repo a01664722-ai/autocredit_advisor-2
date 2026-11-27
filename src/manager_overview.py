@@ -59,10 +59,14 @@ ANALYST_IDS={aid:person for person,aid,_ in ANALYSTS}
 def _kcard(label,value,detail,tone="green",p=None):
     fg,bg=PALETTES[tone]
     bar="" if p is None else f'<div class="ac-mgr-track"><div style="width:{min(max(p,0),1)*100:.1f}%"></div></div>'
+    status=("" if p is None else
+            " · ✓ Meta lograda" if p>=1 else
+            " · ◇ En progreso" if p>=.5 else
+            " · ✕ Por debajo del 50% de la meta")
     return (f'<div class="ac-mgr-kpi" style="--tone:{fg};--panel:{bg}">'
             f'<div class="ac-mgr-label">{html.escape(label)}</div>'
             f'<div class="ac-mgr-val">{html.escape(str(value))}</div>'
-            f'<div class="ac-mgr-desc">{html.escape(detail)}</div>{bar}</div>')
+            f'<div class="ac-mgr-desc">{html.escape(detail+status)}</div>{bar}</div>')
 
 
 def format_executive_chart(fig,height=380,horizontal=False):
